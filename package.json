@@ -1,12 +1,12 @@
 {
-	"name": "express-template",
+	"name": "nosuite",
 	"version": "1.0.0",
-	"description": "An express and scss project template.",
+	"description": "Authenticator, token, and encrypted database microservice for the no-suit.",
 	"main": "server.js",
 	"scripts": {
 		"start": "node src/server.js",
 		"dev": "nodemon src/server.js",
-		"prod": "pm2 start src/server.js --name express-template",
+		"prod": "pm2 start src/server.js --name nosuite",
 		"scss": "sass --watch public/scss:public/css --no-source-map",
 		"kill": "fuser 8000/tcp -k"
 	},
