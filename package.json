@@ -1,0 +1,21 @@
+{
+	"name": "express-template",
+	"version": "1.0.0",
+	"description": "An express and scss project template.",
+	"main": "server.js",
+	"scripts": {
+		"start": "node src/server.js",
+		"dev": "nodemon src/server.js",
+		"prod": "pm2 start src/server.js --name express-template",
+		"scss": "sass --watch public/scss:public/css --no-source-map",
+		"kill": "fuser 8000/tcp -k"
+	},
+	"keywords": [],
+	"author": "Nicolas Gouwy",
+	"license": "ISC",
+	"dependencies": {
+		"express": "^4.21.1",
+		"nodemon": "^3.1.7",
+		"sass": "^1.79.4"
+	}
+}

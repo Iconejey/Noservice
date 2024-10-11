@@ -1,0 +1,59 @@
+{
+	"name": "Express template",
+	"short_name": "Express template",
+	"description": "An express and scss project template.",
+	"start_url": "/",
+	"display": "standalone",
+	"background_color": "#131313",
+	"theme_color": "#131313",
+
+	"share_target": {
+		"action": "/",
+		"method": "GET",
+		"enctype": "application/x-www-form-urlencoded",
+		"params": {
+			"title": "title",
+			"text": "text",
+			"url": "url"
+		}
+	},
+
+	"icons": [
+		{
+			"src": "https://icons.ngwy.fr/maskable/resize/f9f9f9/000000/1024/1024",
+			"sizes": "1024x1024",
+			"type": "image/png",
+			"purpose": "maskable"
+		},
+		{
+			"src": "https://icons.ngwy.fr/maskable/resize/f9f9f9/000000/512/512",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "maskable"
+		},
+		{
+			"src": "https://icons.ngwy.fr/maskable/resize/f9f9f9/000000/256/256",
+			"sizes": "256x256",
+			"type": "image/png",
+			"purpose": "maskable"
+		},
+		{
+			"src": "https://icons.ngwy.fr/circle/resize/f9f9f9/000000/1024/1024",
+			"sizes": "1024x1024",
+			"type": "image/png",
+			"purpose": "any"
+		},
+		{
+			"src": "https://icons.ngwy.fr/circle/resize/f9f9f9/000000/512/512",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "any"
+		},
+		{
+			"src": "https://icons.ngwy.fr/circle/resize/f9f9f9/000000/256/256",
+			"sizes": "256x256",
+			"type": "image/png",
+			"purpose": "any"
+		}
+	]
+}

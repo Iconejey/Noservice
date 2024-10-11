@@ -1,0 +1,13 @@
+{
+	"files.exclude": {
+		"**/css": true,
+		"**/.vscode": true,
+		".prettierignore": true,
+		".gitignore": true,
+		"**/node_modules": true,
+		"pnpm-lock.yaml": true
+	},
+	"search.exclude": {
+		"**/css": true
+	}
+}
