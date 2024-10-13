@@ -1,5 +1,92 @@
 const express = require('express');
 const app = express();
+const fs = require('fs');
+const { hashPassword, writeEncrypted, readEncrypted, userExists, verifyPassword, generateToken, processToken } = require('./encryption');
+
+// Load environment variables
+require('dotenv').config();
+
+// Middlewares
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Determine if email requires sign up or sign in
+app.post('/email', (req, res) => {
+	// Get email
+	const { email } = req.body;
+
+	// If no email, error
+	if (!email) return res.status(400).send('No email provided');
+
+	// Check if email is in database and send sign in if found
+	const found = fs.readdirSync('./users').find(user => user === email);
+	if (found) return res.send({ action: 'sign in' });
+
+	// Check if email is in beta accesss list and send sign up if found
+	const beta = require('../users/beta-access.json');
+	if (beta.includes(email)) return res.send({ action: 'sign up' });
+
+	// Send refuse
+	res.send({ error: 'refuse' });
+});
+
+// Authenticate user
+app.post('/auth', (req, res) => {
+	// Get email and password
+	const { email, password, name } = req.body;
+
+	// If no email or password, error
+	if (!email || !password) return res.status(400).send('No email or password provided');
+
+	// Verify that email is in beta access list
+	const beta = require('../users/beta-access.json');
+	if (!beta.includes(email)) return res.send({ error: 'refuse' });
+
+	// Hash password
+	const hashed_password = hashPassword(password);
+
+	// If email exists, check password
+	if (userExists(email)) {
+		// Verify password
+		if (!verifyPassword(email, hashed_password)) return res.status(400).send({ error: 'Invalid password' });
+	}
+
+	// If email not found, create user
+	else {
+		// Make user directory
+		fs.mkdirSync(`./users/${email}`);
+
+		// Create password verification encryption file
+		writeEncrypted(`./users/${email}/verification.enc`, 'password', hashed_password);
+
+		// Create account name file
+		writeEncrypted(`./users/${email}/name.enc`, name, hashed_password);
+	}
+
+	// Create token
+	const token = generateToken(email, hashed_password);
+
+	// Send token
+	res.send({ token });
+});
+
+// Get account info
+app.post('/account-info', (req, res) => {
+	// Get token
+	const { token } = req.body;
+
+	// If no token, error
+	if (!token) return res.status(400).send('No token provided');
+
+	// Process token
+	const { email, hashed_password } = processToken(token);
+
+	// Get account name
+	const name = readEncrypted(`./users/${email}/name.enc`, hashed_password);
+
+	// Send account info
+	res.send({ email, name });
+});
 
 app.use(express.static('public'));
 

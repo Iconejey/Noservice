@@ -238,4 +238,55 @@ function delay(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Receive token from authentification window
+function openAuthWindow() {
+	return new Promise(resolve => {
+		// Handle message from auth service
+		function message_handler(e) {
+			if (e.origin !== 'https://nosuite.ngwy.fr') return;
+			resolve(e.data);
+		}
+
+		// Listen for message from auth service
+		addEventListener('message', message_handler, { once: true });
+
+		// Open auth window
+		open(`https://nosuite.ngwy.fr/auth?app=${document.title}`, 'auth', 'width=400,height=500');
+	});
+}
+
+// Get token from local storage or auth service
+async function getToken() {
+	// Local storage
+	const token = localStorage.getItem('token');
+	if (token) return token;
+
+	// Nosuite auth service
+	const data = await openAuthWindow();
+
+	setTimeout(() => {
+		alert(`Bienvenue, ${data.name} !`);
+	}, 500);
+
+	// if (data?.token) localStorage.setItem('token', token);
+	return data?.token;
+}
+
+// Authenticate the user
+async function authenticate() {
+	const token = await getToken();
+	if (!token) return location.reload();
+
+	// Send token to auth service to check if it's valid
+	// TODO: Implement auth service
+}
+
+// TODO: Doesn't work other than on nosuite app
+function getAccountInfo(token) {
+	return fetchJSON('/account-info', {
+		method: 'POST',
+		body: { token: token }
+	});
+}
+
 const body_class = document.body.classList;

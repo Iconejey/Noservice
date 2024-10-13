@@ -1,35 +1,3 @@
-// Register local TTF font for consola
-@font-face {
-	font-family: 'Consola';
-	src: url('/fonts/CONSOLA.ttf') format('truetype');
-}
-
-// Register local TTF font for segoe ui (normal, bold, italic, bold italic in different files)
-@font-face {
-	font-family: 'segoeui';
-	font-weight: normal;
-	src: url('/fonts/segoeui.ttf') format('truetype');
-}
-
-@font-face {
-	font-family: 'segoeui';
-	font-weight: bold;
-	src: url('/fonts/segoeuib.ttf') format('truetype');
-}
-
-@font-face {
-	font-family: 'segoeui';
-	font-style: italic;
-	src: url('/fonts/segoeuii.ttf') format('truetype');
-}
-
-@font-face {
-	font-family: 'segoeui';
-	font-weight: bold;
-	font-style: italic;
-	src: url('/fonts/segoeuiz.ttf') format('truetype');
-}
-
 * {
 	margin: 0;
 	padding: 0;
@@ -37,7 +5,10 @@
 }
 
 body {
-	font-family: 'segoeui', sans-serif;
+	// Font
+	--font-primary: 'Inter', sans-serif;
+	--font-mono: 'Roboto Mono', monospace;
+	font-family: var(--font-primary);
 }
 
 .icon {

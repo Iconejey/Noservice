@@ -1,1 +1,93 @@
 @import './global.scss';
+
+body {
+	// Theme colors
+	--white-1: #ffffff;
+	--white-2: #f8f8f8;
+	--white-3: #e9e9e9;
+	--white-4: #d1d2d4;
+	--white-5: #a3a6ad;
+	--primary: #2f80ed;
+
+	background-color: var(--white-1);
+	max-width: 400px;
+	padding: 2em;
+	margin: 0 auto;
+
+	h1 {
+		text-align: center;
+		font-weight: 500;
+		font-size: 1.5rem;
+	}
+
+	h2 {
+		text-align: center;
+		margin-top: 1em;
+		font-weight: 500;
+		font-size: 1.1rem;
+
+		#origin-app {
+			color: var(--primary);
+		}
+	}
+
+	p {
+		color: var(--white-5);
+		margin-top: 2em;
+	}
+
+	account-list form {
+		margin-top: 2em;
+		display: flex;
+		flex-direction: column;
+		gap: 5px;
+		border-radius: 1rem;
+		overflow: hidden;
+		user-select: none;
+
+		& > * {
+			padding: 0.8em 1em;
+			background-color: var(--white-2);
+			display: flex;
+			align-items: center;
+			gap: 0.5em;
+			border: none;
+			font-size: 1rem;
+			outline: none !important;
+
+			&:hover {
+				background-color: var(--white-3);
+			}
+
+			.icon {
+				font-size: 1.5em;
+			}
+		}
+
+		account-option {
+			gap: 0.8em;
+
+			.account-circle {
+				background-color: var(--white-4);
+				border-radius: 50%;
+				display: flex;
+				min-width: 3rem;
+				height: 3rem;
+				align-items: center;
+				justify-content: center;
+				font-size: 1.2em;
+				opacity: 0.4;
+			}
+
+			.account-info {
+				display: flex;
+				flex-direction: column;
+				gap: 0.1em;
+
+				.account-email {
+					color: var(--white-5);
+				}
+			}
+		}
+	}
+}
