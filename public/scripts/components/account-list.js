@@ -31,8 +31,7 @@ class AccountList extends CustomElement {
 			add_btn.before(account);
 
 			account.onclick = () => {
-				const data = { token, name: account.name, email: account.email };
-				opener?.postMessage(data, '*');
+				opener?.postMessage(token, '*');
 				close();
 			};
 		}

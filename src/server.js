@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const fs = require('fs');
+const cors = require('cors');
 const { hashPassword, writeEncrypted, readEncrypted, userExists, verifyPassword, generateToken, processToken } = require('./encryption');
 
 // Load environment variables
@@ -9,6 +10,7 @@ require('dotenv').config();
 // Middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 
 // Determine if email requires sign up or sign in
 app.post('/email', (req, res) => {

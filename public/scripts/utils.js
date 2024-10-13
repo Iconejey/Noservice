@@ -255,37 +255,30 @@ function openAuthWindow() {
 	});
 }
 
-// Get token from local storage or auth service
-async function getToken() {
-	// Local storage
-	const token = localStorage.getItem('token');
-	if (token) return token;
+function userSignedIn() {
+	return !!localStorage.getItem('token');
+}
 
+// Authenticate user
+async function authenticate(force = false) {
 	// Nosuite auth service
-	const data = await openAuthWindow();
+	if (force || !userSignedIn()) {
+		const popup_token = await openAuthWindow();
+		if (popup_token) localStorage.setItem('token', popup_token);
+	}
 
-	setTimeout(() => {
-		alert(`Bienvenue, ${data.name} !`);
-	}, 500);
-
-	// if (data?.token) localStorage.setItem('token', token);
-	return data?.token;
+	return userSignedIn();
 }
 
-// Authenticate the user
-async function authenticate() {
-	const token = await getToken();
-	if (!token) return location.reload();
-
-	// Send token to auth service to check if it's valid
-	// TODO: Implement auth service
+function signOut() {
+	localStorage.removeItem('token');
+	location.reload();
 }
 
-// TODO: Doesn't work other than on nosuite app
 function getAccountInfo(token) {
-	return fetchJSON('/account-info', {
+	return fetchJSON('https://nosuite.ngwy.fr/account-info', {
 		method: 'POST',
-		body: { token: token }
+		body: { token: token || localStorage.getItem('token') }
 	});
 }
 
