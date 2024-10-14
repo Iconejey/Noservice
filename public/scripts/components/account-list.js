@@ -44,11 +44,20 @@ class AccountList extends CustomElement {
 			const account = render(html`<account-option token=${account_token} />`);
 			add_btn.before(account);
 
+			// Auth user in app on click
 			account.onclick = async () => {
 				const app_token = await this.getAppToken(account_token);
 				if (!app_token) return;
 				opener?.postMessage(app_token, '*');
 				close();
+			};
+
+			// Remove account on right click
+			account.oncontextmenu = e => {
+				e.preventDefault();
+				if (!confirm(`Voulez-vous vraiment supprimer le compte ${account.name} ?`)) return;
+				this.accounts = this.accounts.filter(token => token !== account_token);
+				account.remove();
 			};
 		}
 
