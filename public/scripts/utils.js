@@ -185,6 +185,8 @@ window.addEventListener('load', () => {
 	CustomElement.ready = true;
 });
 
+const body_class = document.body.classList;
+
 const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
 
@@ -238,7 +240,8 @@ function delay(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Receive token from authentification window
+// ---- AUTHENTICATION ----
+
 function openAuthWindow() {
 	return new Promise(resolve => {
 		// Handle message from auth service
@@ -259,7 +262,6 @@ function userSignedIn() {
 	return !!localStorage.getItem('token');
 }
 
-// Authenticate user
 async function authenticate(force = false) {
 	// Nosuite auth service
 	if (force || !userSignedIn()) {
@@ -282,4 +284,36 @@ function getAccountInfo(token) {
 	});
 }
 
-const body_class = document.body.classList;
+// ---- STORAGE ----
+
+function joinPath(...paths) {
+	return paths.join('/').replace(/\/+/g, '/');
+}
+
+class STORAGE {
+	static ls(path) {
+		const route = joinPath('ls', path);
+		return fetchJSON(`https://nosuite.ngwy.fr/${route}`);
+	}
+
+	static async read(path) {
+		const route = joinPath('read', path);
+		const { content } = await fetchJSON(`https://nosuite.ngwy.fr/${route}`);
+		return content;
+	}
+
+	static write(path, content) {
+		const route = joinPath('write', path);
+		return fetchJSON(`https://nosuite.ngwy.fr/${route}`, { method: 'POST', body: { content } });
+	}
+
+	static mkdir(path) {
+		const route = joinPath('mkdir', path);
+		return fetchJSON(`https://nosuite.ngwy.fr/${route}`, { method: 'POST' });
+	}
+
+	static rm(path) {
+		const route = joinPath('rm', path);
+		return fetchJSON(`https://nosuite.ngwy.fr/${route}`, { method: 'DELETE' });
+	}
+}

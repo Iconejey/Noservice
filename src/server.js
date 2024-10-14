@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const fs = require('fs');
+const PATH = require('path');
 const cors = require('cors');
 const { hashPassword, writeEncrypted, readEncrypted, userExists, verifyPassword, generateToken, getAppOrigin, processToken } = require('./encryption');
 
@@ -11,6 +12,8 @@ require('dotenv').config();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
+
+// ---- Authentication ----
 
 // Determine if email requires sign up or sign in
 app.post('/email', (req, res) => {
@@ -34,8 +37,6 @@ app.post('/email', (req, res) => {
 
 // Authenticate user on app
 app.post('/auth/:app', (req, res) => {
-	console.log(`Received auth request from ${req.params.app}`);
-
 	// Get nosuite auth token
 	const { token } = req.body;
 
@@ -95,7 +96,7 @@ app.post('/auth', (req, res) => {
 // Get account info
 app.post('/account-info', (req, res) => {
 	// Get token
-	const { token } = req.body;
+	const token = req.body.token || req.headers.authorization?.split(' ')[1];
 
 	// If no token, error
 	if (!token) return res.status(400).send('No token provided');
@@ -110,6 +111,118 @@ app.post('/account-info', (req, res) => {
 	res.send({ email, name });
 });
 
+// Authorization middleware
+function auth(req, res, next) {
+	// Get token
+	const token = req.headers.authorization?.split(' ')[1];
+
+	// If no token, error
+	if (!token) return res.status(401).send({ error: 'No token provided' });
+
+	// Process token
+	const data = processToken(token, getAppOrigin(req));
+
+	// If token is invalid, error
+	if (!data.valid) return res.status(401).send({ error: 'Unauthorized' });
+
+	// Verify that email is in database
+	if (!userExists(data.email)) return res.status(401).send({ error: 'User not found' });
+
+	// Verify that password is correct
+	if (!verifyPassword(data.email, data.hashed_password)) return res.status(401).send({ error: 'Authentication info invalid' });
+
+	// Attach data to request
+	req.token_data = data;
+
+	// Continue
+	next();
+}
+
+// ---- Storage ----
+
+// Storage middleware
+function storage(req, res, next) {
+	const user_email = req.token_data.email;
+	const app_origin = getAppOrigin(req);
+
+	// Set storage root
+	req.storage_root = PATH.join(__dirname, '..', 'users', user_email, app_origin);
+
+	// Set storage path
+	req.storage_path = PATH.join(req.storage_root, req.params[0] || '.');
+
+	// If storage path is outside of storage root, error
+	if (!req.storage_path.startsWith(req.storage_root)) return res.status(403).send({ error: 'Forbidden' });
+
+	// Create app storage directory if it doesn't exist
+	if (!fs.existsSync(req.storage_root)) fs.mkdirSync(req.storage_root);
+
+	// Continue
+	next();
+}
+
+// Create directory
+app.post('/mkdir/*', auth, storage, (req, res) => {
+	// Check if path exists
+	if (fs.existsSync(req.storage_path)) return res.send({ success: true });
+
+	// Create directory
+	fs.mkdirSync(req.storage_path);
+
+	// Send success
+	res.send({ success: true });
+});
+
+// List files in directory
+app.get('/ls/*?', auth, storage, (req, res) => {
+	// Check if path exists and is a directory
+	if (!fs.existsSync(req.storage_path) || !fs.statSync(req.storage_path).isDirectory()) return res.status(404).send({ error: 'Not found' });
+
+	// List files
+	const files = fs.readdirSync(req.storage_path, { withFileTypes: true }).map(file => ({
+		name: file.name,
+		path: PATH.join(req.params.path || '.', file.name),
+		is_directory: file.isDirectory()
+	}));
+
+	// Send files
+	res.send(files);
+});
+
+// Read file
+app.get('/read/*', auth, storage, (req, res) => {
+	console.log(req.storage_path);
+
+	// Read encrypted file
+	const content = readEncrypted(req.storage_path, req.token_data.hashed_password);
+
+	// Send data
+	res.send({ content });
+});
+
+// Write file
+app.post('/write/*', auth, storage, (req, res) => {
+	// Write encrypted file
+	writeEncrypted(req.storage_path, req.body.content, req.token_data.hashed_password);
+
+	// Send success
+	res.send({ success: true });
+});
+
+// Delete file or directory
+app.delete('/rm/*', auth, storage, (req, res) => {
+	// Check if path exists
+	if (!fs.existsSync(req.storage_path)) return res.status(404).send({ error: 'Not found' });
+
+	// Delete file or directory
+	if (fs.statSync(req.storage_path).isDirectory()) fs.rmSync(req.storage_path, { recursive: true });
+	else fs.unlinkSync(req.storage_path);
+
+	// Send success
+	res.send({ success: true });
+});
+
+// ---- App ----
 app.use(express.static('public'));
 
 app.listen(8003, () => console.log('Server running on port 8003'));
