@@ -70,6 +70,8 @@ function getAppOrigin(req) {
 	return new URL(origin).hostname;
 }
 
+const APP_WHITE_LIST = ['nosuite.ngwy.fr', 'template.ngwy.fr', 'nomark.ngwy.fr', 'notask.ngwy.fr', 'candidat.ngwy.fr', 'noscheme.ngwy.fr'];
+
 // Process token
 function processToken(token, origin) {
 	const data = decrypt(Buffer.from(token, 'hex'), null);
@@ -77,6 +79,9 @@ function processToken(token, origin) {
 
 	// Check if origin is correct
 	if (data.origin !== origin) return { valid: false };
+
+	// Check if origin is in white list
+	if (!APP_WHITE_LIST.includes(origin)) return { valid: false };
 
 	// Check if token is expired
 	if (Date.now() > data.exp) return { valid: false };
