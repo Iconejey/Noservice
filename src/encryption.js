@@ -60,19 +60,26 @@ function verifyPassword(email, hashed_password) {
 }
 
 // Generate token
-function generateToken(email, hashed_password) {
-	return encrypt({ email, hashed_password, date: Date.now() }, null).toString('hex');
+function generateToken(origin, email, days_before_exp, hashed_password) {
+	const exp = Date.now() + days_before_exp * 86_400_000;
+	return encrypt({ origin, email, hashed_password, exp }, null).toString('hex');
+}
+
+function getAppOrigin(req) {
+	const origin = req.headers.referer || req.headers.origin;
+	return new URL(origin).hostname;
 }
 
 // Process token
-function processToken(token) {
+function processToken(token, origin) {
 	const data = decrypt(Buffer.from(token, 'hex'), null);
 	if (!data) return { valid: false };
 
-	// Check if token is expired (30 days)
-	const date = new Date(data.date);
-	const now = Date.now();
-	if (now - date > 2_592_000_000) return { valid: false };
+	// Check if origin is correct
+	if (data.origin !== origin) return { valid: false };
+
+	// Check if token is expired
+	if (Date.now() > data.exp) return { valid: false };
 
 	// Check if email is in database
 	if (!userExists(data.email)) return { valid: false };
@@ -84,4 +91,4 @@ function processToken(token) {
 	return { valid: true, ...data };
 }
 
-module.exports = { hashPassword, encrypt, decrypt, writeEncrypted, readEncrypted, userExists, verifyPassword, generateToken, processToken };
+module.exports = { hashPassword, encrypt, decrypt, writeEncrypted, readEncrypted, userExists, verifyPassword, generateToken, getAppOrigin, processToken };

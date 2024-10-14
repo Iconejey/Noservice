@@ -14,6 +14,20 @@ class AccountList extends CustomElement {
 		this.whenReady(() => this.selectAccount());
 	}
 
+	async getAppToken(account_token) {
+		const json = await fetchJSON(`/auth/${origin_app}`, {
+			method: 'POST',
+			body: { token: account_token }
+		});
+
+		if (json.error) {
+			alert("Erreur lors de l'authentification : " + json.error);
+			return null;
+		}
+
+		return json.token;
+	}
+
 	selectAccount() {
 		this.innerHTML = html`
 			<form>
@@ -26,12 +40,14 @@ class AccountList extends CustomElement {
 
 		const add_btn = this.$('#add-account');
 
-		for (const token of this.accounts) {
-			const account = render(html`<account-option token=${token} />`);
+		for (const account_token of this.accounts) {
+			const account = render(html`<account-option token=${account_token} />`);
 			add_btn.before(account);
 
-			account.onclick = () => {
-				opener?.postMessage(token, '*');
+			account.onclick = async () => {
+				const app_token = await this.getAppToken(account_token);
+				if (!app_token) return;
+				opener?.postMessage(app_token, '*');
 				close();
 			};
 		}
@@ -124,7 +140,7 @@ class AccountList extends CustomElement {
 		// Send email and password to server
 		const json = await fetchJSON('/auth', {
 			method: 'POST',
-			body: { email, password }
+			body: { email, password, app: origin_app }
 		});
 
 		// If error, alert
@@ -180,7 +196,7 @@ class AccountList extends CustomElement {
 		// Send email and password to server
 		const json = await fetchJSON('/auth', {
 			method: 'POST',
-			body: { email, password, name }
+			body: { email, password, name, app: origin_app }
 		});
 
 		// If error, alert

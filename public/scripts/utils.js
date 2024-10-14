@@ -251,7 +251,7 @@ function openAuthWindow() {
 		addEventListener('message', message_handler, { once: true });
 
 		// Open auth window
-		open(`https://nosuite.ngwy.fr/auth?app=${document.title}`, 'auth', 'width=400,height=500');
+		open(`https://nosuite.ngwy.fr/auth?app=${location.host}`, 'auth', 'width=400,height=500');
 	});
 }
 

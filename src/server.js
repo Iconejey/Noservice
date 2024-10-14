@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 const fs = require('fs');
 const cors = require('cors');
-const { hashPassword, writeEncrypted, readEncrypted, userExists, verifyPassword, generateToken, processToken } = require('./encryption');
+const { hashPassword, writeEncrypted, readEncrypted, userExists, verifyPassword, generateToken, getAppOrigin, processToken } = require('./encryption');
 
 // Load environment variables
 require('dotenv').config();
@@ -32,7 +32,27 @@ app.post('/email', (req, res) => {
 	res.send({ error: 'refuse' });
 });
 
-// Authenticate user
+// Authenticate user on app
+app.post('/auth/:app', (req, res) => {
+	console.log(`Received auth request from ${req.params.app}`);
+
+	// Get nosuite auth token
+	const { token } = req.body;
+
+	// Process token
+	const token_data = processToken(token, 'nosuite.ngwy.fr');
+
+	// If token is invalid, error
+	if (!token_data.valid) return res.status(400).send('Invalid token');
+
+	// Generate app token
+	const app_token = generateToken(req.params.app, token_data.email, 7, token_data.hashed_password);
+
+	// Send app token
+	res.send({ token: app_token });
+});
+
+// Authenticate user on Nosuite
 app.post('/auth', (req, res) => {
 	// Get email and password
 	const { email, password, name } = req.body;
@@ -65,8 +85,8 @@ app.post('/auth', (req, res) => {
 		writeEncrypted(`./users/${email}/name.enc`, name, hashed_password);
 	}
 
-	// Create token
-	const token = generateToken(email, hashed_password);
+	// Create Nosuite token
+	const token = generateToken('nosuite.ngwy.fr', email, 90, hashed_password);
 
 	// Send token
 	res.send({ token });
@@ -81,7 +101,7 @@ app.post('/account-info', (req, res) => {
 	if (!token) return res.status(400).send('No token provided');
 
 	// Process token
-	const { email, hashed_password } = processToken(token);
+	const { email, hashed_password } = processToken(token, getAppOrigin(req));
 
 	// Get account name
 	const name = readEncrypted(`./users/${email}/name.enc`, hashed_password);
