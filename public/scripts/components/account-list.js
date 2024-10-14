@@ -234,11 +234,18 @@ class AccountOption extends CustomElement {
 				</div>
 			`;
 
-			const { email, name } = await getAccountInfo(this.token);
-			this.email = email;
-			this.name = name;
+			const info = await getAccountInfo(this.token);
 
-			const initials = name
+			if (info.error) {
+				alert('Erreur lors de la récupération des informations du compte : ' + info.error);
+				this.accounts = this.accounts.filter(token => token !== this.token);
+				return this.remove();
+			}
+
+			this.email = info.email;
+			this.name = info.name;
+
+			const initials = this.name
 				.split(' ')
 				.slice(0, 2)
 				.map(word => word[0])
@@ -248,8 +255,8 @@ class AccountOption extends CustomElement {
 			this.innerHTML = html`
 				<div class="account-circle">${initials}</div>
 				<div class="account-info">
-					<span class="account-name">${name}</span>
-					<span class="account-email">${email}</span>
+					<span class="account-name">${this.name}</span>
+					<span class="account-email">${this.email}</span>
 				</div>
 			`;
 		});
