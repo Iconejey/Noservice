@@ -220,9 +220,9 @@ async function fetchJSON(url, options) {
 
 	const res = await fetch(url, options);
 
-	if (res.status === 401) {
+	if (location.host !== 'nosuite.ngwy.fr' && res.status === 401) {
 		localStorage.removeItem('token');
-		alert('Votre session a expiré');
+		alert('Votre session a expiré, veuillez vous reconnecter.');
 		return location.reload();
 	}
 

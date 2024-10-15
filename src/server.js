@@ -99,10 +99,15 @@ app.post('/account-info', (req, res) => {
 	const token = req.body.token || req.headers.authorization?.split(' ')[1];
 
 	// If no token, error
-	if (!token) return res.status(400).send('No token provided');
+	if (!token) return res.status(401).send({ error: 'No token provided' });
 
 	// Process token
-	const { email, hashed_password } = processToken(token, getAppOrigin(req));
+	const data = processToken(token, getAppOrigin(req));
+
+	// If token is invalid, error
+	if (!data.valid) return res.status(401).send({ error: 'Invalid token' });
+
+	const { email, hashed_password } = data;
 
 	// Get account name
 	const name = readEncrypted(`./users/${email}/name.enc`, hashed_password);

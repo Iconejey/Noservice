@@ -237,8 +237,8 @@ class AccountOption extends CustomElement {
 			const info = await getAccountInfo(this.token);
 
 			if (info.error) {
-				alert('Erreur lors de la récupération des informations du compte : ' + info.error);
-				this.accounts = this.accounts.filter(token => token !== this.token);
+				const account_list = this.closest('account-list');
+				account_list.accounts = account_list.accounts.filter(token => token !== this.token);
 				return this.remove();
 			}
 
