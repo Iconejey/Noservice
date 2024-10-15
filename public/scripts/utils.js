@@ -227,6 +227,8 @@ async function fetchJSON(url, options) {
 	}
 
 	try {
+		if (!res.ok) return { error: res.statusText };
+
 		const json = await res.json();
 		if (json?.error) console.error(json.error);
 		return json;
