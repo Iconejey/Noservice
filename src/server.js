@@ -150,11 +150,14 @@ function storage(req, res, next) {
 	const user_email = req.token_data.email;
 	const app_origin = getAppOrigin(req);
 
+	// Set request app path
+	req.app_path = req.params[0] || '.';
+
 	// Set storage root
 	req.storage_root = PATH.join(__dirname, '..', 'users', user_email, app_origin);
 
 	// Set storage path
-	req.storage_path = PATH.join(req.storage_root, req.params[0] || '.');
+	req.storage_path = PATH.join(req.storage_root, req.app_path);
 
 	// If storage path is outside of storage root, error
 	if (!req.storage_path.startsWith(req.storage_root)) return res.status(403).send({ error: 'Forbidden' });
@@ -186,7 +189,7 @@ app.get('/ls/*?', auth, storage, (req, res) => {
 	// List files
 	const files = fs.readdirSync(req.storage_path, { withFileTypes: true }).map(file => ({
 		name: file.name,
-		path: PATH.join(req.params.path || '.', file.name),
+		path: PATH.join(req.app_path, file.name),
 		is_directory: file.isDirectory()
 	}));
 
