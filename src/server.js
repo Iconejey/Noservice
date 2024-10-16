@@ -199,7 +199,8 @@ app.get('/ls/*?', auth, storage, (req, res) => {
 
 // Read file
 app.get('/read/*', auth, storage, (req, res) => {
-	console.log(req.storage_path);
+	// If path is not a file, error
+	if (!fs.existsSync(req.storage_path) || fs.statSync(req.storage_path).isDirectory()) return res.status(404).send({ error: 'Not found' });
 
 	// Read encrypted file
 	const content = readEncrypted(req.storage_path, req.token_data.hashed_password);
@@ -210,11 +211,19 @@ app.get('/read/*', auth, storage, (req, res) => {
 
 // Write file
 app.post('/write/*', auth, storage, (req, res) => {
-	// Write encrypted file
-	writeEncrypted(req.storage_path, req.body.content, req.token_data.hashed_password);
+	// If path is not a file, error
+	if (fs.existsSync(req.storage_path) && fs.statSync(req.storage_path).isDirectory()) return res.status(404).send({ error: 'Not found' });
 
-	// Send success
-	res.send({ success: true });
+	try {
+		// Write encrypted file
+		writeEncrypted(req.storage_path, req.body.content, req.token_data.hashed_password);
+
+		// Send success
+		res.send({ success: true });
+	} catch (error) {
+		// Send error
+		res.status(500).send({ error: error.message });
+	}
 });
 
 // Delete file or directory
