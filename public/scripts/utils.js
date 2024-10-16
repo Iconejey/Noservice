@@ -300,8 +300,8 @@ class STORAGE {
 
 	static async read(path) {
 		const route = joinPath('read', path);
-		const { content } = await fetchJSON(`https://nosuite.ngwy.fr/${route}`);
-		return content;
+		const json = await fetchJSON(`https://nosuite.ngwy.fr/${route}`);
+		return json.error ? null : json.content;
 	}
 
 	static write(path, content) {
