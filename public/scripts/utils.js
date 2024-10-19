@@ -293,6 +293,12 @@ function joinPath(...paths) {
 }
 
 class STORAGE {
+	static onChange(callback) {
+		const socket = io('https://nosuite.ngwy.fr');
+		socket.on('file-change', callback);
+		socket.emit('register', { app: location.host, token: localStorage.getItem('token') });
+	}
+
 	static ls(path) {
 		const route = joinPath('ls', path);
 		return fetchJSON(`https://nosuite.ngwy.fr/${route}`);

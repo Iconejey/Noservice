@@ -1,5 +1,6 @@
 const express = require('express');
-const app = express();
+const http = require('http');
+const socketIo = require('socket.io');
 const fs = require('fs');
 const PATH = require('path');
 const cors = require('cors');
@@ -8,10 +9,50 @@ const { hashPassword, writeEncrypted, readEncrypted, userExists, verifyPassword,
 // Load environment variables
 require('dotenv').config();
 
+// Create server
+
+const app = express();
+const server = http.createServer(app);
+const io = new socketIo.Server(server, { cors: { origin: '*' } });
+
 // Middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
+
+const user_sockets = new Map();
+
+function getUserSockets(email) {
+	// If email is already registered, return sockets
+	let sockets = user_sockets.get(email);
+	if (sockets) return sockets;
+
+	// If email is not registered, add email to map and return empty array
+	sockets = [];
+	user_sockets.set(email, sockets);
+	return sockets;
+}
+
+function emitUser(email, event, data) {
+	for (const { socket, app } of getUserSockets(email)) {
+		socket.emit(event, { app, ...data });
+	}
+}
+
+io.on('connection', socket => {
+	socket.on('register', ({ app, token }) => {
+		const token_data = processToken(token, app);
+		if (!token_data.valid) return;
+
+		const sockets = getUserSockets(token_data.email);
+		sockets.push({ socket, app });
+
+		socket.on('disconnect', () => {
+			const index = sockets.findIndex(s => s.socket === socket);
+			if (index !== -1) sockets.splice(index, 1);
+		});
+	});
+});
 
 // ---- Authentication ----
 
@@ -178,6 +219,7 @@ app.post('/mkdir/*', auth, storage, (req, res) => {
 	fs.mkdirSync(req.storage_path);
 
 	// Send success
+	emitUser(req.token_data.email, 'file-change', { path: req.app_path, action: 'mkdir' });
 	res.send({ success: true });
 });
 
@@ -219,6 +261,7 @@ app.post('/write/*', auth, storage, (req, res) => {
 		writeEncrypted(req.storage_path, req.body.content, req.token_data.hashed_password);
 
 		// Send success
+		emitUser(req.token_data.email, 'file-change', { path: req.app_path, action: 'write', content: req.body.content });
 		res.send({ success: true });
 	} catch (error) {
 		// Send error
@@ -236,10 +279,11 @@ app.delete('/rm/*', auth, storage, (req, res) => {
 	else fs.unlinkSync(req.storage_path);
 
 	// Send success
+	emitUser(req.token_data.email, 'file-change', { path: req.app_path, action: 'rm' });
 	res.send({ success: true });
 });
 
 // ---- App ----
 app.use(express.static('public'));
 
-app.listen(8003, () => console.log('Server running on port 8003'));
+server.listen(8003, () => console.log('Server running on port 8003'));
