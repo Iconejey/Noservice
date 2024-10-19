@@ -10,7 +10,6 @@ const { hashPassword, writeEncrypted, readEncrypted, userExists, verifyPassword,
 require('dotenv').config();
 
 // Create server
-
 const app = express();
 const server = http.createServer(app);
 const io = new socketIo.Server(server, { cors: { origin: '*' } });
@@ -33,19 +32,20 @@ function getUserSockets(email) {
 	return sockets;
 }
 
-function emitUser(email, event, data) {
-	for (const { socket, app } of getUserSockets(email)) {
+function emitUser(author_id, email, event, data) {
+	for (const { socket, app, id } of getUserSockets(email)) {
+		data.by_self = author_id === id;
 		socket.emit(event, { app, ...data });
 	}
 }
 
 io.on('connection', socket => {
-	socket.on('register', ({ app, token }) => {
+	socket.on('register', ({ token, app, id }) => {
 		const token_data = processToken(token, app);
 		if (!token_data.valid) return;
 
 		const sockets = getUserSockets(token_data.email);
-		sockets.push({ socket, app });
+		sockets.push({ socket, app, id });
 
 		socket.on('disconnect', () => {
 			const index = sockets.findIndex(s => s.socket === socket);
@@ -191,6 +191,9 @@ function storage(req, res, next) {
 	const user_email = req.token_data.email;
 	const app_origin = getAppOrigin(req);
 
+	// Set request storage id
+	req.storage_id = req.query.id;
+
 	// Set request app path
 	req.app_path = req.params[0] || '.';
 
@@ -219,7 +222,7 @@ app.post('/mkdir/*', auth, storage, (req, res) => {
 	fs.mkdirSync(req.storage_path);
 
 	// Send success
-	emitUser(req.token_data.email, 'file-change', { path: req.app_path, action: 'mkdir' });
+	emitUser(req.storage_id, req.token_data.email, 'file-change', { path: req.app_path, action: 'mkdir' });
 	res.send({ success: true });
 });
 
@@ -261,7 +264,7 @@ app.post('/write/*', auth, storage, (req, res) => {
 		writeEncrypted(req.storage_path, req.body.content, req.token_data.hashed_password);
 
 		// Send success
-		emitUser(req.token_data.email, 'file-change', { path: req.app_path, action: 'write', content: req.body.content });
+		emitUser(req.storage_id, req.token_data.email, 'file-change', { path: req.app_path, action: 'write', content: req.body.content });
 		res.send({ success: true });
 	} catch (error) {
 		// Send error
@@ -279,7 +282,7 @@ app.delete('/rm/*', auth, storage, (req, res) => {
 	else fs.unlinkSync(req.storage_path);
 
 	// Send success
-	emitUser(req.token_data.email, 'file-change', { path: req.app_path, action: 'rm' });
+	emitUser(req.storage_id, req.token_data.email, 'file-change', { path: req.app_path, action: 'rm' });
 	res.send({ success: true });
 });
 

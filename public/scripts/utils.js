@@ -294,34 +294,35 @@ function joinPath(...paths) {
 
 class STORAGE {
 	static onChange(callback) {
+		STORAGE.id = Date.now().toString(16);
 		const socket = io('https://nosuite.ngwy.fr');
 		socket.on('file-change', callback);
-		socket.emit('register', { app: location.host, token: localStorage.getItem('token') });
+		socket.emit('register', { id: STORAGE.id, app: location.host, token: localStorage.getItem('token') });
 	}
 
 	static ls(path) {
 		const route = joinPath('ls', path);
-		return fetchJSON(`https://nosuite.ngwy.fr/${route}`);
+		return fetchJSON(`https://nosuite.ngwy.fr/${route}?id=${STORAGE.id}`);
 	}
 
 	static async read(path) {
 		const route = joinPath('read', path);
-		const json = await fetchJSON(`https://nosuite.ngwy.fr/${route}`);
+		const json = await fetchJSON(`https://nosuite.ngwy.fr/${route}?id=${STORAGE.id}`);
 		return json.error ? null : json.content;
 	}
 
 	static write(path, content) {
 		const route = joinPath('write', path);
-		return fetchJSON(`https://nosuite.ngwy.fr/${route}`, { method: 'POST', body: { content } });
+		return fetchJSON(`https://nosuite.ngwy.fr/${route}?id=${STORAGE.id}`, { method: 'POST', body: { content } });
 	}
 
 	static mkdir(path) {
 		const route = joinPath('mkdir', path);
-		return fetchJSON(`https://nosuite.ngwy.fr/${route}`, { method: 'POST' });
+		return fetchJSON(`https://nosuite.ngwy.fr/${route}?id=${STORAGE.id}`, { method: 'POST' });
 	}
 
 	static rm(path) {
 		const route = joinPath('rm', path);
-		return fetchJSON(`https://nosuite.ngwy.fr/${route}`, { method: 'DELETE' });
+		return fetchJSON(`https://nosuite.ngwy.fr/${route}?id=${STORAGE.id}`, { method: 'DELETE' });
 	}
 }
