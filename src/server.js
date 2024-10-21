@@ -62,7 +62,7 @@ app.post('/email', (req, res) => {
 	const { email } = req.body;
 
 	// If no email, error
-	if (!email) return res.status(400).send('No email provided');
+	if (!email) return res.send('No email provided');
 
 	// Check if email is in database and send sign in if found
 	const found = fs.readdirSync('./users').find(user => user === email);
@@ -85,7 +85,7 @@ app.post('/auth/:app', (req, res) => {
 	const token_data = processToken(token, 'nosuite.ngwy.fr');
 
 	// If token is invalid, error
-	if (!token_data.valid) return res.status(400).send('Invalid token');
+	if (!token_data.valid) return res.send('Invalid token');
 
 	// Generate app token
 	const app_token = generateToken(req.params.app, token_data.email, 7, token_data.hashed_password);
@@ -100,7 +100,7 @@ app.post('/auth', (req, res) => {
 	const { email, password, name } = req.body;
 
 	// If no email or password, error
-	if (!email || !password) return res.status(400).send('No email or password provided');
+	if (!email || !password) return res.send({ error: 'No email or password provided' });
 
 	// Verify that email is in beta access list
 	const beta = require('../users/beta-access.json');
@@ -112,7 +112,7 @@ app.post('/auth', (req, res) => {
 	// If email exists, check password
 	if (userExists(email)) {
 		// Verify password
-		if (!verifyPassword(email, hashed_password)) return res.status(400).send({ error: 'Invalid password' });
+			return res.send({ error: 'Invalid password' });
 	}
 
 	// If email not found, create user
@@ -140,13 +140,13 @@ app.post('/account-info', (req, res) => {
 	const token = req.body.token || req.headers.authorization?.split(' ')[1];
 
 	// If no token, error
-	if (!token) return res.status(401).send({ error: 'No token provided' });
+	if (!token) return res.send({ error: 'No token provided' });
 
 	// Process token
 	const data = processToken(token, getAppOrigin(req));
 
 	// If token is invalid, error
-	if (!data.valid) return res.status(401).send({ error: 'Invalid token' });
+	if (!data.valid) return res.send({ error: 'Invalid token' });
 
 	const { email, hashed_password } = data;
 
@@ -163,19 +163,19 @@ function auth(req, res, next) {
 	const token = req.headers.authorization?.split(' ')[1];
 
 	// If no token, error
-	if (!token) return res.status(401).send({ error: 'No token provided' });
+	if (!token) return res.send({ error: 'No token provided' });
 
 	// Process token
 	const data = processToken(token, getAppOrigin(req));
 
 	// If token is invalid, error
-	if (!data.valid) return res.status(401).send({ error: 'Unauthorized' });
+	if (!data.valid) return res.send({ error: 'Unauthorized' });
 
 	// Verify that email is in database
-	if (!userExists(data.email)) return res.status(401).send({ error: 'User not found' });
+	if (!userExists(data.email)) return res.send({ error: 'User not found' });
 
 	// Verify that password is correct
-	if (!verifyPassword(data.email, data.hashed_password)) return res.status(401).send({ error: 'Authentication info invalid' });
+	if (!verifyPassword(data.email, data.hashed_password)) return res.send({ error: 'Authentication info invalid' });
 
 	// Attach data to request
 	req.token_data = data;
@@ -204,7 +204,7 @@ function storage(req, res, next) {
 	req.storage_path = PATH.join(req.storage_root, req.app_path);
 
 	// If storage path is outside of storage root, error
-	if (!req.storage_path.startsWith(req.storage_root)) return res.status(403).send({ error: 'Forbidden' });
+	if (!req.storage_path.startsWith(req.storage_root)) return res.send({ error: 'Forbidden' });
 
 	// Create app storage directory if it doesn't exist
 	if (!fs.existsSync(req.storage_root)) fs.mkdirSync(req.storage_root);
