@@ -1,6 +1,7 @@
 pnpm-lock.yaml
 *.css
 /users
+/users backup
 
 # Logs
 logs
