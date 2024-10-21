@@ -112,7 +112,7 @@ app.post('/auth', (req, res) => {
 	// If email exists, check password
 	if (userExists(email)) {
 		// Verify password
-			return res.send({ error: 'Invalid password' });
+		if (!verifyPassword(email, hashed_password)) return res.send({ error: 'Invalid password' });
 	}
 
 	// If email not found, create user
