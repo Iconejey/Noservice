@@ -82,7 +82,7 @@ app.post('/auth/:app', (req, res) => {
 	const { token } = req.body;
 
 	// Process token
-	const token_data = processToken(token, 'nosuite.ngwy.fr');
+	const token_data = processToken(token, process.env.AUTH_SERVER);
 
 	// If token is invalid, error
 	if (!token_data.valid) return res.send('Invalid token');
@@ -128,7 +128,7 @@ app.post('/auth', (req, res) => {
 	}
 
 	// Create Nosuite token
-	const token = generateToken('nosuite.ngwy.fr', email, 90, hashed_password);
+	const token = generateToken(process.env.AUTH_SERVER, email, 90, hashed_password);
 
 	// Send token
 	res.send({ token });
