@@ -325,4 +325,11 @@ class STORAGE {
 		const route = joinPath('rm', path);
 		return fetchJSON(`https://nosuite.ngwy.fr/${route}?id=${STORAGE.id}`, { method: 'DELETE' });
 	}
+
+	static async traverse(path, callback) {
+		for (const elem of await STORAGE.ls(path)) {
+			if (elem.is_directory) await STORAGE.traverse(elem.path, callback);
+			else await callback(elem);
+		}
+	}
 }
