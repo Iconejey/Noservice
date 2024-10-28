@@ -27,7 +27,6 @@
 		<!-- Scripts -->
 		<script src="/scripts/utils.js" defer></script>
 		<script src="/scripts/components/account-list.js" defer></script>
-		<script src="/scripts/main.js" defer></script>
 	</head>
 	<body>
 		<h1>Choisissez un compte Nosuite</h1>
@@ -36,5 +35,17 @@
 		<account-list></account-list>
 
 		<p>Utilisez votre compte Nosuite pour vous connecter à toutes nos applications. Toutes les données de vos applications sont chiffrées et stockées dans votre compte Nosuite.</p>
+
+		<script>
+			// Get the origin app name from search params
+			const url_params = new URLSearchParams(location.search);
+			const origin_app = url_params.get('app');
+			onload = () => {
+				$('#origin-app').innerText = origin_app;
+			};
+
+			// Remove the search params from the url
+			history.replaceState(null, '', location.pathname);
+		</script>
 	</body>
 </html>
