@@ -240,17 +240,19 @@ async function fetchJSON(url, options) {
 
 	const res = await fetch(url, options);
 
-	if (location.host !== 'nosuite.ngwy.fr' && res.status === 401) {
-		localStorage.removeItem('token');
-		alert('Votre session a expiré, veuillez vous reconnecter.');
-		return location.reload();
-	}
-
 	try {
 		if (!res.ok) return { error: res.statusText };
 
 		const json = await res.json();
 		if (json?.error) console.error(json.error);
+
+		// Unothorized
+		if (json.error === 'Unauthorized') {
+			localStorage.removeItem('token');
+			alert('Votre session a expiré, veuillez vous reconnecter.');
+			return location.reload();
+		}
+
 		return json;
 	} catch (err) {
 		console.error(err);
