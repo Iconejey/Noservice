@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=persons-content" />
+		<meta name="theme-color" content="#131313" />
+		<link rel="icon" href="https://icons.ngwy.fr/badge/nfc/none/ffffff/192/192" />
+
+		<!-- Title -->
+		<title>Create NCF key</title>
+
+		<!-- Styles -->
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+		<link rel="stylesheet" href="/css/main.css" />
+
+		<!-- Scripts -->
+		<script src="/scripts/utils.js" defer></script>
+		<script src="/scripts/nfc-key.js" defer></script>
+	</head>
+	<body>
+		<h1>Continue</h1>
+		<h2>to create the physical key</h2>
+
+		<form>
+			<button type="submit">Continue</button>
+		</form>
+
+		<script>
+			onload = () => {
+				// If the admin is not logged in, show forbidden
+				if (!localStorage.getItem('admin')) {
+					$('body').innerHTML = 'Forbidden';
+					return;
+				}
+
+				// Write a url to an NFC tag
+				async function writeNFC(url) {
+					if (!('NDEFReader' in window)) throw new Error('Web NFC is not supported.');
+
+					const ndef = new NDEFReader();
+
+					await ndef.write({
+						records: [{ recordType: 'url', data: url }]
+					});
+
+					console.log('NFC tag written successfully.');
+				}
+
+				// Get the url from server
+				const form = $('form');
+				form.onsubmit = async e => {
+					e.preventDefault();
+
+					// Get physical key from server (using password)
+					const res = await fetchJSON('/nfc-key', {
+						method: 'POST',
+						body: { admin_device_id: localStorage.getItem('admin') }
+					});
+
+					if (res.error) {
+						alert(res.error);
+						return;
+					}
+
+					// Write the url to the NFC tag
+					try {
+						await writeNFC(res.physical_key_url);
+					} catch (error) {
+						console.error(error);
+						alert(`Error: ${error.message}`);
+					}
+				};
+			};
+		</script>
+	</body>
+</html>

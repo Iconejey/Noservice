@@ -4,105 +4,95 @@ const fs = require('fs');
 // Load environment variables
 require('dotenv').config();
 
-// Hash password
-function hashPassword(password) {
-	return crypto.createHash('sha256').update(password).digest('hex');
-}
+class Encryption {
+	// Check if private key is set
+	get is_ready() {
+		return this.private_key !== null;
+	}
 
-// Generate encryption key from private key and hashed password
-function generateUserKey(hashed_password) {
-	const private_key = Buffer.from(process.env.PRIVATE_KEY, 'hex');
-	if (!hashed_password) return private_key;
-	return crypto.scryptSync(hashed_password, private_key, 32);
-}
+	constructor() {
+		this.private_key = null;
+		this.iv = Buffer.from(process.env.IV, 'hex');
+	}
 
-// Encrypt data
-function encrypt(data, hashed_password) {
-	const iv = Buffer.from(process.env.IV, 'hex');
-	const key = generateUserKey(hashed_password);
-	const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-	const str_data = JSON.stringify(data);
-	return Buffer.concat([cipher.update(str_data), cipher.final()]);
-}
+	// Hash password
+	hashPassword(password) {
+		return crypto.createHash('sha256').update(password).digest('hex');
+	}
 
-// Decrypt data
-function decrypt(data, hashed_password) {
-	const iv = Buffer.from(process.env.IV, 'hex');
-	const key = generateUserKey(hashed_password);
-	const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-	try {
-		return JSON.parse(Buffer.concat([decipher.update(data), decipher.final()]).toString());
-	} catch (e) {
-		return null;
+	// Create a physical ssh key from password and a new random private key
+	createKey() {
+		return crypto.randomBytes(32).toString('hex');
+	}
+
+	// Encrypt key with password
+	encryptKeyWithPassword(key, hashed_password) {
+		return crypto.pbkdf2Sync(hashed_password, key, 256, 32, 'sha256');
+	}
+
+	// Start encryption by encrypting private key with password from physical key
+	start(physical_key_hex, admin_password) {
+		// Construct private key
+		const hashed_admin_password = this.hashPassword(admin_password);
+		const physical_key = Buffer.from(physical_key_hex, 'hex');
+		this.private_key = this.encryptKeyWithPassword(physical_key, hashed_admin_password);
+
+		// Try to decrypt the private key verif to check if the key is correct
+		const private_key_verif = Buffer.from(process.env.PRIVATE_KEY_VERIF, 'hex');
+		const decrypted_private_key_verif = this.decrypt(private_key_verif, null);
+
+		if (decrypted_private_key_verif !== process.env.ADMIN_DEVICE_ID) {
+			this.private_key = null;
+			return false;
+		}
+
+		return true;
+	}
+
+	// Generate encryption key from private key and hashed password
+	generateUserKey(hashed_password) {
+		if (!hashed_password) return this.private_key;
+		return this.encryptKeyWithPassword(this.private_key, hashed_password);
+	}
+
+	// Encrypt data
+	encrypt(data, hashed_password) {
+		const user_key = this.generateUserKey(hashed_password);
+		const cipher = crypto.createCipheriv('aes-256-cbc', user_key, this.iv);
+		const str_data = JSON.stringify(data);
+		return Buffer.concat([cipher.update(str_data), cipher.final()]);
+	}
+
+	// Decrypt data
+	decrypt(data, hashed_password) {
+		const user_key = this.generateUserKey(hashed_password);
+		const decipher = crypto.createDecipheriv('aes-256-cbc', user_key, this.iv);
+		try {
+			return JSON.parse(Buffer.concat([decipher.update(data), decipher.final()]).toString());
+		} catch (e) {
+			return null;
+		}
+	}
+
+	// Determine if the path is a test file
+	isTestFile(path) {
+		return path.includes('/test@gmail.com/');
+	}
+
+	// Write encrypted data to file
+	write(path, data, hashed_password) {
+		if (!this.isTestFile(path)) data = this.encrypt(data, hashed_password);
+		fs.writeFileSync(path, data);
+	}
+
+	// Read encrypted data from file
+	read(path, hashed_password) {
+		if (!fs.existsSync(path)) return null;
+
+		const data = fs.readFileSync(path);
+		if (this.isTestFile(path)) return data.toString();
+		return this.decrypt(data, hashed_password);
 	}
 }
 
-// Determine if the path is a test file
-function isTestFile(path) {
-	return path.includes('/test@gmail.com/');
-}
-
-// Write encrypted data to file
-function writeEncrypted(path, data, hashed_password) {
-	if (!isTestFile(path)) data = encrypt(data, hashed_password);
-	fs.writeFileSync(path, data);
-}
-
-// Read encrypted data from file
-function readEncrypted(path, hashed_password) {
-	if (!fs.existsSync(path)) return null;
-
-	const data = fs.readFileSync(path);
-	if (isTestFile(path)) return data.toString();
-	return decrypt(data, hashed_password);
-}
-
-// Verify that user exists
-function userExists(email) {
-	return fs.readdirSync('./users').find(user => user.startsWith(email));
-}
-
-// Verify hashed password
-function verifyPassword(email, hashed_password) {
-	const path = `./users/${email}/verification.enc`;
-	if (isTestFile(path)) return true;
-	const verification_str = readEncrypted(path, hashed_password);
-	return verification_str === 'password';
-}
-
-// Generate token
-function generateToken(origin, email, days_before_exp, hashed_password) {
-	const exp = Date.now() + days_before_exp * 86_400_000;
-	return encrypt({ origin, email, hashed_password, exp }, null).toString('hex');
-}
-
-function getAppOrigin(req) {
-	const origin = req.headers.referer || req.headers.origin;
-	return new URL(origin).hostname;
-}
-
-// Process token
-function processToken(token, origin) {
-	const data = decrypt(Buffer.from(token, 'hex'), null);
-	if (!data) return { valid: false };
-
-	// Check if origin is correct
-	if (data.origin !== origin) return { valid: false };
-
-	// Check if origin ends with authorized domain
-	if (!origin.endsWith(process.env.AUTHORIZED_DOMAIN)) return { valid: false };
-
-	// Check if token is expired
-	if (Date.now() > data.exp) return { valid: false };
-
-	// Check if email is in database
-	if (!userExists(data.email)) return { valid: false };
-
-	// Verify password
-	if (!verifyPassword(data.email, data.hashed_password)) return { valid: false };
-
-	// Return token data
-	return { valid: true, ...data };
-}
-
-module.exports = { hashPassword, encrypt, decrypt, writeEncrypted, readEncrypted, userExists, verifyPassword, generateToken, getAppOrigin, processToken };
+module.exports = new Encryption();

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=persons-content" />
+		<meta name="theme-color" content="#131313" />
+		<link rel="icon" href="https://icons.ngwy.fr/badge/dns/none/ffffff/192/192" />
+
+		<!-- Title -->
+		<title>Start service</title>
+
+		<!-- Styles -->
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+		<link rel="stylesheet" href="/css/main.css" />
+
+		<!-- Scripts -->
+		<script src="/scripts/utils.js" defer></script>
+	</head>
+	<body>
+		<h1>Enter the password</h1>
+		<h2>to start <span id="origin-app">...</span></h2>
+
+		<form>
+			<input type="password" placeholder="Password" name="password" required />
+			<button type="submit">Continue</button>
+		</form>
+
+		<script>
+			onload = () => {
+				// Get the physical ssh key from the url
+				const urlParams = new URLSearchParams(window.location.search);
+				const physical_key_hex = urlParams.get('key');
+
+				// Remove search params from url
+				history.replaceState(null, '', location.pathname);
+
+				// // If the admin is not logged in, show forbidden
+				// if (!localStorage.getItem('admin')) {
+				// 	$('body').innerHTML = 'Forbidden';
+				// 	return;
+				// }
+
+				// Add origin app to the DOM
+				$('#origin-app').innerText = location.host;
+
+				// Form submit
+				const form = $('form');
+				form.onsubmit = async e => {
+					e.preventDefault();
+
+					const admin_password = form.password.value;
+
+					const res = await fetchJSON('/start', {
+						method: 'POST',
+						body: { physical_key_hex, admin_password, admin_device_id: localStorage.getItem('admin') }
+					});
+
+					// Error
+					if (res.error) {
+						alert(res.error);
+						location.reload();
+					}
+
+					// Success
+					else location.replace('/started');
+				};
+			};
+		</script>
+	</body>
+</html>
