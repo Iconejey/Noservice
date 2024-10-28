@@ -187,10 +187,10 @@ window.addEventListener('load', () => {
 
 const body_class = document.body.classList;
 
-const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
-
 function dateToFrench(date_ms) {
+	const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+	const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+
 	const today = new Date();
 
 	const date = new Date(+date_ms);
@@ -205,6 +205,26 @@ function dateToFrench(date_ms) {
 	if (year !== new Date().getFullYear()) return `${day} ${date.getDate()} ${month} ${year}`;
 
 	return `${day} ${date.getDate()} ${month}`;
+}
+
+function dateToEnglish(date_ms) {
+	const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+	const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+	const today = new Date();
+
+	const date = new Date(+date_ms);
+	const day = days[date.getDay()];
+	const month = months[date.getMonth()];
+	const year = date.getFullYear();
+	const hours = date.getHours().toString().padStart(2, '0');
+	const minutes = date.getMinutes().toString().padStart(2, '0');
+
+	if (date.toDateString() === today.toDateString()) return `Today at ${hours}:${minutes}`;
+	if (date.toDateString() === new Date(today.setDate(today.getDate() - 1)).toDateString()) return `Yesterday at ${hours}:${minutes}`;
+	if (year !== new Date().getFullYear()) return `${day} ${month} ${date.getDate()} ${year}`;
+
+	return `${day} ${month} ${date.getDate()}`;
 }
 
 async function fetchJSON(url, options) {
