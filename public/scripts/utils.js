@@ -310,8 +310,22 @@ function getAccountInfo(token) {
 
 // ---- STORAGE ----
 
-function joinPath(...paths) {
-	return paths.join('/').replace(/\/+/g, '/');
+class PATH {
+	static join(...paths) {
+		return paths.join('/').replace(/\/+/g, '/');
+	}
+
+	static basename(path) {
+		return path?.split('/').pop() || '';
+	}
+
+	static dirname(path) {
+		return path?.split('/').slice(0, -1).join('/') || '/';
+	}
+
+	static trim(path) {
+		return path.replace(/^\//, '').replace(/\/$/, '') || '/';
+	}
 }
 
 class STORAGE {
@@ -323,28 +337,28 @@ class STORAGE {
 	}
 
 	static ls(path) {
-		const route = joinPath('ls', path);
+		const route = PATH.join('ls', path);
 		return fetchJSON(`https://nosuite.ngwy.fr/${route}?id=${STORAGE.id}`);
 	}
 
 	static async read(path) {
-		const route = joinPath('read', path);
+		const route = PATH.join('read', path);
 		const json = await fetchJSON(`https://nosuite.ngwy.fr/${route}?id=${STORAGE.id}`);
 		return json.error ? null : json.content;
 	}
 
 	static write(path, content) {
-		const route = joinPath('write', path);
+		const route = PATH.join('write', path);
 		return fetchJSON(`https://nosuite.ngwy.fr/${route}?id=${STORAGE.id}`, { method: 'POST', body: { content } });
 	}
 
 	static mkdir(path) {
-		const route = joinPath('mkdir', path);
+		const route = PATH.join('mkdir', path);
 		return fetchJSON(`https://nosuite.ngwy.fr/${route}?id=${STORAGE.id}`, { method: 'POST' });
 	}
 
 	static rm(path) {
-		const route = joinPath('rm', path);
+		const route = PATH.join('rm', path);
 		return fetchJSON(`https://nosuite.ngwy.fr/${route}?id=${STORAGE.id}`, { method: 'DELETE' });
 	}
 
