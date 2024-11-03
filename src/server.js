@@ -20,44 +20,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
-const user_sockets = new Map();
-
-function getUserSockets(email) {
-	// If email is already registered, return sockets
-	let sockets = user_sockets.get(email);
-	if (sockets) return sockets;
-
-	// If email is not registered, add email to map and return empty array
-	sockets = [];
-	user_sockets.set(email, sockets);
-	return sockets;
-}
-
-function emitUser(author_id, email, event, data) {
-	for (const { socket, app, id } of getUserSockets(email)) {
-		data.by_self = author_id === id;
-		socket.emit(event, { app, ...data });
-	}
-}
-
-io.on('connection', socket => {
-	// If service is not started, error
-	if (!encryption.is_ready) return socket.disconnect();
-
-	socket.on('register', ({ token, app, id }) => {
-		const token_data = Auth.processToken(token, app);
-		if (!token_data.valid) return;
-
-		const sockets = getUserSockets(token_data.email);
-		sockets.push({ socket, app, id });
-
-		socket.on('disconnect', () => {
-			const index = sockets.findIndex(s => s.socket === socket);
-			if (index !== -1) sockets.splice(index, 1);
-		});
-	});
-});
-
 // ---- Service ----
 
 // Create a physical key
@@ -103,6 +65,7 @@ app.post('/start', (req, res) => {
 
 	// Send success
 	res.send({ success: true });
+	console.log('Service started');
 });
 
 // A middleware that prevents the route from being accessed if the service is not started
@@ -216,133 +179,120 @@ app.post('/account-info', ready, (req, res) => {
 	res.send({ email, name });
 });
 
-// Authorization middleware
-function auth(req, res, next) {
-	// Get token
-	const token = req.headers.authorization?.split(' ')[1];
+// Use sockets to handle storage commands
+function onStorageCmd(socket, type, callback) {
+	// Listen for command event and check token before executing callback
+	socket.on(type, (cmd, res) => {
+		// If no token, error
+		if (!cmd.token) return res({ error: 'No token provided' });
 
-	// If no token, error
-	if (!token) return res.send({ error: 'No token provided' });
+		// Process token
+		const token_data = Auth.processToken(cmd.token, cmd.app);
 
-	// Process token
-	const data = Auth.processToken(token, Auth.getAppOrigin(req));
+		// If token is invalid, error
+		if (!token_data.valid) return res({ error: 'Invalid token' });
 
-	// If token is invalid, error
-	if (!data.valid) return res.send({ error: 'Unauthorized' });
+		// Attach token data to request
+		cmd.auth = token_data;
 
-	// Verify that email is in database
-	if (!Auth.userExists(data.email)) return res.send({ error: 'User not found' });
+		// Add socket to user room for file changes
+		socket.join(token_data.email);
 
-	// Verify that password is correct
-	if (!Auth.verifyPassword(data.email, data.hashed_password)) return res.send({ error: 'Authentication info invalid' });
+		// Set storage root and full path
+		cmd.storage_root = PATH.join(__dirname, '..', 'users', token_data.email, cmd.app);
+		cmd.full_path = PATH.join(cmd.storage_root, cmd.path);
 
-	// Attach data to request
-	req.token_data = data;
+		// If full path is outside of storage root, error
+		if (!cmd.full_path.startsWith(cmd.storage_root)) return res({ error: 'Forbidden' });
 
-	// Continue
-	next();
+		// Create app storage directory if it doesn't exist
+		if (!fs.existsSync(cmd.storage_root)) fs.mkdirSync(cmd.storage_root);
+
+		// Execute callback
+		const needs_broadcast = callback(cmd, res);
+
+		// If broadcast is needed, emit file change event
+		if (needs_broadcast) {
+			// Remove authentication data
+			delete cmd.auth;
+			delete cmd.token;
+
+			console.log(cmd);
+			io.to(token_data.email).emit('file-change', cmd);
+		}
+	});
 }
 
-// ---- Storage ----
-
-// Storage middleware
-function storage(req, res, next) {
-	const user_email = req.token_data.email;
-	const app_origin = Auth.getAppOrigin(req);
-
-	// Set request storage id
-	req.storage_id = req.query.id;
-
-	// Set request app path
-	req.app_path = req.params[0] || '.';
-
-	// Set storage root
-	req.storage_root = PATH.join(__dirname, '..', 'users', user_email, app_origin);
-
-	// Set storage path
-	req.storage_path = PATH.join(req.storage_root, req.app_path);
-
-	// If storage path is outside of storage root, error
-	if (!req.storage_path.startsWith(req.storage_root)) return res.send({ error: 'Forbidden' });
-
-	// Create app storage directory if it doesn't exist
-	if (!fs.existsSync(req.storage_root)) fs.mkdirSync(req.storage_root);
-
-	// Continue
-	next();
-}
-
-// Create directory
-app.post('/mkdir/*', ready, auth, storage, (req, res) => {
-	// Check if path exists
-	if (fs.existsSync(req.storage_path)) return res.send({ success: true });
+// Client socket
+io.on('connection', socket => {
+	// If service is not started, error
+	if (!encryption.is_ready) return socket.disconnect();
 
 	// Create directory
-	fs.mkdirSync(req.storage_path);
-
-	// Send success
-	emitUser(req.storage_id, req.token_data.email, 'file-change', { path: req.app_path, action: 'mkdir' });
-	res.send({ success: true });
-});
-
-// List files in directory
-app.get('/ls/*?', ready, auth, storage, (req, res) => {
-	// Check if path exists and is a directory
-	if (!fs.existsSync(req.storage_path) || !fs.statSync(req.storage_path).isDirectory()) return res.send({ error: 'Not found' });
-
-	// List files
-	const files = fs.readdirSync(req.storage_path, { withFileTypes: true }).map(file => ({
-		name: file.name,
-		path: PATH.join(req.app_path, file.name),
-		is_directory: file.isDirectory()
-	}));
-
-	// Send files
-	res.send(files);
-});
-
-// Read file
-app.get('/read/*', ready, auth, storage, (req, res) => {
-	// If path is not a file, error
-	if (!fs.existsSync(req.storage_path) || fs.statSync(req.storage_path).isDirectory()) return res.send({ error: 'Not found' });
-
-	// Read encrypted file
-	const content = encryption.read(req.storage_path, req.token_data.hashed_password);
-
-	// Send data
-	res.send({ content });
-});
-
-// Write file
-app.post('/write/*', ready, auth, storage, (req, res) => {
-	// If path is not a file, error
-	if (fs.existsSync(req.storage_path) && fs.statSync(req.storage_path).isDirectory()) return res.send({ error: 'Not found' });
-
-	try {
-		// Write encrypted file
-		encryption.write(req.storage_path, req.body.content, req.token_data.hashed_password);
+	onStorageCmd(socket, 'mkdir', (req, res) => {
+		// Create directory if it doesn't exist
+		if (!fs.existsSync(req.full_path)) fs.mkdirSync(req.full_path);
 
 		// Send success
-		emitUser(req.storage_id, req.token_data.email, 'file-change', { path: req.app_path, action: 'write', content: req.body.content });
-		res.send({ success: true });
-	} catch (error) {
-		// Send error
-		res.send({ error: error.message });
-	}
-});
+		res({ success: true });
+		return false;
+	});
 
-// Delete file or directory
-app.delete('/rm/*', ready, auth, storage, (req, res) => {
-	// Check if path exists
-	if (!fs.existsSync(req.storage_path)) return res.send({ error: 'Not found' });
+	// List files in directory
+	onStorageCmd(socket, 'ls', (req, res) => {
+		// Check if path exists and is a directory
+		if (!fs.existsSync(req.full_path) || !fs.statSync(req.full_path).isDirectory()) res({ error: 'Not found' });
 
-	// Delete file or directory
-	if (fs.statSync(req.storage_path).isDirectory()) fs.rmSync(req.storage_path, { recursive: true });
-	else fs.unlinkSync(req.storage_path);
+		// List files
+		const files = fs.readdirSync(req.full_path, { withFileTypes: true }).map(file => ({
+			name: file.name,
+			path: PATH.join(req.path, file.name),
+			is_directory: file.isDirectory()
+		}));
 
-	// Send success
-	emitUser(req.storage_id, req.token_data.email, 'file-change', { path: req.app_path, action: 'rm' });
-	res.send({ success: true });
+		// Send files
+		res(files);
+		return false;
+	});
+
+	// Read file
+	onStorageCmd(socket, 'read', (req, res) => {
+		// Check if file exists
+		if (!fs.existsSync(req.full_path) || !fs.statSync(req.full_path).isFile()) res({ error: 'Not found' });
+
+		// Read encrypted file
+		const content = encryption.read(req.full_path, req.auth.hashed_password);
+
+		// Send content
+		res({ content });
+		return false;
+	});
+
+	// Write file
+	onStorageCmd(socket, 'write', (req, res) => {
+		// Write encrypted file
+		encryption.write(req.full_path, req.content, req.auth.hashed_password);
+
+		// Send success
+		res({ success: true });
+		return true;
+	});
+
+	// Remove file or directory
+	onStorageCmd(socket, 'rm', (req, res) => {
+		// Check if file exists
+		if (!fs.existsSync(req.full_path)) {
+			res({ error: 'Not found' });
+			return false;
+		}
+
+		// Remove file or directory
+		fs.rmSync(req.full_path, { recursive: true });
+
+		// Send success
+		res({ success: true });
+		return true;
+	});
 });
 
 // ---- Pages ----

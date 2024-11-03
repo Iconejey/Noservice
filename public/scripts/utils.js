@@ -308,6 +308,11 @@ function getAccountInfo(token) {
 	});
 }
 
+// ---- SOCKET ----
+
+const SOCKET = io('https://nosuite.ngwy.fr');
+const CLIENT_ID = Date.now().toString(36).slice(-2); // Just for broadcast self identification
+
 // ---- STORAGE ----
 
 class PATH {
@@ -329,39 +334,63 @@ class PATH {
 }
 
 class STORAGE {
+	// Send command to storage service
+	static sendCmd(type, path, content = null) {
+		return new Promise((resolve, reject) => {
+			// Command object
+			const cmd = {
+				token: localStorage.getItem('token'),
+				app: location.host,
+				type,
+				path,
+				content,
+				client_id: CLIENT_ID
+			};
+
+			// Send command
+			SOCKET.emit(type, cmd, response => {
+				if (response.error) return reject(response.error);
+				resolve(response);
+			});
+		});
+	}
+
+	// Listen for remote file changes
 	static onChange(callback) {
-		STORAGE.id = Date.now().toString(16);
-		const socket = io('https://nosuite.ngwy.fr');
-		socket.on('file-change', callback);
-		socket.emit('register', { id: STORAGE.id, app: location.host, token: localStorage.getItem('token') });
+		SOCKET.on('file-change', cmd => {
+			cmd.by_self = cmd.client_id === CLIENT_ID;
+			delete cmd.id;
+			callback(cmd);
+		});
 	}
 
+	// List files and directories in a path
 	static ls(path) {
-		const route = PATH.join('ls', path);
-		return fetchJSON(`https://nosuite.ngwy.fr/${route}?id=${STORAGE.id}`);
+		return STORAGE.sendCmd('ls', path);
 	}
 
+	// Read file content
 	static async read(path) {
-		const route = PATH.join('read', path);
-		const json = await fetchJSON(`https://nosuite.ngwy.fr/${route}?id=${STORAGE.id}`);
-		return json.error ? null : json.content;
+		const response = await STORAGE.sendCmd('read', path);
+		return response.content;
 	}
 
+	// Write content to a file
 	static write(path, content) {
-		const route = PATH.join('write', path);
-		return fetchJSON(`https://nosuite.ngwy.fr/${route}?id=${STORAGE.id}`, { method: 'POST', body: { content } });
+		return STORAGE.sendCmd('write', path, content);
 	}
 
+	// Create a directory
 	static mkdir(path) {
-		const route = PATH.join('mkdir', path);
-		return fetchJSON(`https://nosuite.ngwy.fr/${route}?id=${STORAGE.id}`, { method: 'POST' });
+		return STORAGE.sendCmd('mkdir', path);
 	}
 
+	// Remove a file or directory
 	static rm(path) {
-		const route = PATH.join('rm', path);
-		return fetchJSON(`https://nosuite.ngwy.fr/${route}?id=${STORAGE.id}`, { method: 'DELETE' });
+		return STORAGE.sendCmd('rm', path);
 	}
 
+	// Walk recursively and apply a callback to each file
 	static async traverse(path, callback) {
 		for (const elem of await STORAGE.ls(path)) {
 			if (elem.is_directory) await STORAGE.traverse(elem.path, callback);
