@@ -216,6 +216,19 @@ async function fetchJSON(url, options) {
 	}
 }
 
+// Fetch blob
+async function fetchBlob(url) {
+	const options = {
+		headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+	};
+
+	const res = await fetch(url, options);
+	if (!res.ok) return { error: res.statusText };
+
+	// Create a blob from the response
+	return await res.blob();
+}
+
 function delay(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -336,6 +349,27 @@ class STORAGE {
 		return STORAGE.sendCmd('write', path, content);
 	}
 
+	// Write a chunk of data_url to a file
+	static writeChunk(path, chunk, final = false) {
+		return STORAGE.sendCmd('write-chunk', path, { chunk, final });
+	}
+
+	// Upload an url_data
+	static async uploadUrlData(url_data, path, progress_callback) {
+		const chunk_size = 1024 * 950;
+		let offset = 0;
+
+		// Write chunk by chunk
+		while (offset < url_data.length) {
+			progress_callback(offset / url_data.length);
+			const chunk = url_data.slice(offset, offset + chunk_size);
+			await STORAGE.writeChunk(path, chunk, offset + chunk_size >= url_data.length);
+			offset += chunk_size;
+		}
+
+		progress_callback(1);
+	}
+
 	// Create a directory
 	static mkdir(path) {
 		return STORAGE.sendCmd('mkdir', path);
@@ -344,6 +378,15 @@ class STORAGE {
 	// Remove a file or directory
 	static rm(path) {
 		return STORAGE.sendCmd('rm', path);
+	}
+
+	// Read the data of a file input
+	static fileData(file) {
+		return new Promise(resolve => {
+			const reader = new FileReader();
+			reader.onload = () => resolve(reader.result);
+			reader.readAsDataURL(file);
+		});
 	}
 
 	// Walk recursively and apply a callback to each file

@@ -5,6 +5,8 @@ const fs = require('fs');
 const PATH = require('path');
 const cors = require('cors');
 const chrono = require('chrono-node');
+const { createCanvas, Image } = require('canvas');
+
 const encryption = require('./encryption');
 const Auth = require('./auth');
 
@@ -180,6 +182,95 @@ app.post('/account-info', ready, (req, res) => {
 	res.send({ email, name });
 });
 
+// ---- Fetch Storage ----
+
+// Auth middleware
+function auth(req, res, next) {
+	// Get token
+	const token = req.body.token || req.headers.authorization?.split(' ')[1];
+	if (!token) return res.send({ error: 'No token provided' });
+
+	// Process token
+	req.auth = Auth.processToken(token, Auth.getAppOrigin(req));
+
+	// If token is invalid, error
+	if (!req.auth.valid) return res.send({ error: 'Invalid token' });
+
+	// Get the path from the url
+	req.url_path = req.path.replace('/storage', '');
+	req.storage_root = PATH.join(__dirname, '..', 'users', req.auth.email, req.auth.origin);
+	req.full_path = PATH.join(req.storage_root, req.url_path);
+
+	// If full path is outside of storage root, error
+	if (!req.full_path.startsWith(req.storage_root)) return res.send({ error: 'Forbidden' });
+
+	// Continue
+	next();
+}
+
+// Process request path
+function processPath(req, prefix) {
+	// Get the path from the url
+	req.url_path = req.path.replace(prefix, '');
+	req.storage_root = PATH.join(__dirname, '..', 'users', req.auth.email, req.auth.origin);
+	req.full_path = PATH.join(req.storage_root, req.url_path);
+
+	// If full path is outside of storage root, error
+	if (!req.full_path.startsWith(req.storage_root)) return false;
+
+	// Return true if path is valid
+	return true;
+}
+
+// Get file
+app.get('/storage/*', auth, (req, res) => {
+	// Process path
+	if (!processPath(req, '/storage')) return res.send({ error: 'Forbidden' });
+
+	// Check if file exists
+	if (!fs.existsSync(req.full_path) || !fs.statSync(req.full_path).isFile()) return res.send({ error: 'Not found' });
+
+	// Read encrypted file
+	res.send(encryption.readBuffer(req.full_path, req.auth.hashed_password));
+});
+
+// Get resized image (thumbnails, etc.)
+app.get('/resized/:size/*', auth, async (req, res) => {
+	// Get size
+	const size = parseInt(req.params.size);
+
+	// Process path
+	if (!processPath(req, `/resized/${size}`)) return res.send({ error: 'Forbidden' });
+
+	// Check if file exists
+	if (!fs.existsSync(req.full_path) || !fs.statSync(req.full_path).isFile()) return res.send({ error: 'Not found' });
+
+	// Read encrypted file
+	const buffer = encryption.readBuffer(req.full_path, req.auth.hashed_password);
+
+	// Resize image using canvas
+	const img = new Image();
+	await new Promise(resolve => {
+		img.onload = resolve;
+		img.src = buffer;
+	});
+
+	// Get the original image size
+	const { width, height } = img;
+
+	// Calculate the new size
+	const [rw, rh] = width > height ? [size, (size * height) / width] : [(size * width) / height, size];
+
+	const canvas = createCanvas(rw, rh);
+	const ctx = canvas.getContext('2d');
+	ctx.drawImage(img, 0, 0, rw, rh);
+
+	// Send the resized image
+	res.send(canvas.toBuffer());
+});
+
+// ---- Socket Storage ----
+
 // Use sockets to handle storage commands
 function onStorageCmd(socket, type, callback) {
 	// Listen for command event and check token before executing callback
@@ -281,6 +372,34 @@ io.on('connection', socket => {
 		// Send success
 		res({ success: true });
 		return true;
+	});
+
+	// Write chunk of url_data
+	onStorageCmd(socket, 'write-chunk', (req, res) => {
+		const temp_path = req.full_path + '.temp';
+		const { chunk, final } = req.content;
+
+		// Write encrypted file
+		fs.appendFileSync(temp_path, chunk);
+
+		// Create the image file from the temp dataURL file if it's the final chunk
+		if (final) {
+			// Get the dataURL from the temp file
+			const data_url = fs.readFileSync(temp_path, 'utf8');
+
+			// Create the image file
+			const buffer = Buffer.from(data_url.split(',')[1], 'base64');
+
+			// Write the image file
+			encryption.writeBuffer(req.full_path, buffer, req.auth.hashed_password);
+
+			// Remove the temp file
+			fs.rmSync(temp_path);
+		}
+
+		// Send success
+		res({ success: true });
+		return final;
 	});
 
 	// Remove file or directory
