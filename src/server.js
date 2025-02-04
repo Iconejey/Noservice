@@ -241,13 +241,18 @@ io.on('connection', socket => {
 	onStorageCmd(socket, 'ls', (req, res) => {
 		// Check if path exists and is a directory
 		if (!fs.existsSync(req.full_path) || !fs.statSync(req.full_path).isDirectory()) res({ error: 'Not found' });
+		let files;
 
+		try {
 		// List files
-		const files = fs.readdirSync(req.full_path, { withFileTypes: true }).map(file => ({
+			files = fs.readdirSync(req.full_path, { withFileTypes: true }).map(file => ({
 			name: file.name,
 			path: PATH.join(req.path, file.name),
 			is_directory: file.isDirectory()
 		}));
+		} catch (e) {
+			files = [];
+		}
 
 		// Send files
 		res(files);
