@@ -4,6 +4,7 @@ const socketIo = require('socket.io');
 const fs = require('fs');
 const PATH = require('path');
 const cors = require('cors');
+const chrono = require('chrono-node');
 const encryption = require('./encryption');
 const Auth = require('./auth');
 
@@ -296,6 +297,33 @@ io.on('connection', socket => {
 		// Send success
 		res({ success: true });
 		return true;
+	});
+
+	// Parse date NLP using chrono (both in English and French)
+	socket.on('date-nlp', (text, res) => {
+		const one_hour_offset = new Date(Date.now() + 3600000);
+
+		// "midi" is not recognized by chrono, so we replace it with "12h00"
+		const midi = text.includes('midi');
+		text = text.replace(/midi/g, '12h00');
+
+		// Parse in french first
+		let parsed = chrono.fr.parse(text, one_hour_offset, { forwardDate: true })[0];
+
+		// If no french date found, parse in english
+		if (!parsed) parsed = chrono.parse(text, one_hour_offset, { forwardDate: true })[0];
+
+		// If no date found, null
+		if (!parsed) return res(null);
+
+		// If "midi" was found, we need to put it back in the text
+		if (midi) parsed.text = parsed.text.replace(/12h00/g, 'midi');
+
+		// We need the date and the text
+		res({
+			date: parsed.start.date().getTime() - 3600000,
+			text: parsed.text
+		});
 	});
 });
 
