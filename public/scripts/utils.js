@@ -21,16 +21,12 @@ function html(strings, ...values) {
 	let text = strings.reduce((acc, str, i) => acc + str + (values[i] || ''), '');
 
 	// Handle self closing custom elements (ignore native self closing elements)
-	text = text.replaceAll(/<([\w-]+)[^>]*\/>/g, (match, tag) => {
-		// If tag contains a dash, it's a custom element
-		if (tag.includes('-')) return match.replace('/>', `></${tag}>`);
+	return text.replaceAll(/<(\w+-[\w-]+)[^>]*\/>/gm, (match, tag) => match.replace('/>', `></${tag}>`));
+}
 
-		// Else it's a native element, ignore
-		return match;
-	});
-
-	// Return text
-	return text;
+// Escape HTML
+function escapeHTML(md) {
+	return md.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /*
