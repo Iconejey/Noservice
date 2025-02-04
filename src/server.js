@@ -336,12 +336,12 @@ io.on('connection', socket => {
 		let files;
 
 		try {
-		// List files
+			// List files
 			files = fs.readdirSync(req.full_path, { withFileTypes: true }).map(file => ({
-			name: file.name,
-			path: PATH.join(req.path, file.name),
-			is_directory: file.isDirectory()
-		}));
+				name: file.name,
+				path: PATH.join(req.path, file.name),
+				is_directory: file.isDirectory()
+			}));
 		} catch (e) {
 			files = [];
 		}
