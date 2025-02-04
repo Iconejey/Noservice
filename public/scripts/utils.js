@@ -235,15 +235,14 @@ async function fetchJSON(url, options) {
 	options.body &&= JSON.stringify(options.body);
 
 	const res = await fetch(url, options);
+	if (!res.ok) return { error: res.statusText };
 
 	try {
-		if (!res.ok) return { error: res.statusText };
-
 		const json = await res.json();
 		if (json?.error) console.error(json.error);
 
 		// Unothorized
-		if (json.error === 'Unauthorized') {
+		if (json.error === 'Invalid token') {
 			localStorage.removeItem('token');
 			alert('Votre session a expiré, veuillez vous reconnecter.');
 			return location.reload();
