@@ -217,7 +217,6 @@ function onStorageCmd(socket, type, callback) {
 			delete cmd.auth;
 			delete cmd.token;
 
-			console.log(cmd);
 			io.to(token_data.email).emit('file-change', cmd);
 		}
 	});
@@ -304,4 +303,4 @@ app.get('/auth', ready);
 app.use(express.static('public'));
 
 // Start the server
-server.listen(8003, () => console.log('Server running on port 8003'));
+server.listen(8003, () => console.log('Server running on port 8003, please start the service'));

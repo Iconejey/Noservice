@@ -8,7 +8,7 @@
 		"dev": "nodemon src/server.js --ignore users",
 		"prod": "pm2 start src/server.js --name nosuite",
 		"scss": "sass --watch public/scss:public/css --no-source-map",
-		"kill": "fuser 8000/tcp -k"
+		"kill": "fuser 8003/tcp -k"
 	},
 	"keywords": [],
 	"author": "Nicolas Gouwy",
