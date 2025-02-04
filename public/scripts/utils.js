@@ -233,6 +233,65 @@ function delay(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Get the cursor position
+function getCursorPosition(elem) {
+	try {
+		// Get the current selection object
+		let selection = getSelection();
+
+		// // If the selection is not a caret, return -1
+		// if (selection.type !== 'Caret') return -1;
+
+		// Get the range object representing the current selection
+		const range = selection.getRangeAt(0);
+		// Create a clone of the range before the selection
+		const preSelectionRange = range.cloneRange();
+
+		// Select all the contents of the element
+		preSelectionRange.selectNodeContents(elem);
+		// Set the end of the range to the start of the current selection
+		preSelectionRange.setEnd(range.startContainer, range.startOffset);
+
+		// Calculate the offset of the cursor position by getting the length of the range contents
+		return preSelectionRange.toString().length;
+	} catch (err) {
+		return -1;
+	}
+}
+
+// Set the cursor position
+function setCursorPosition(elem, cursorOffset) {
+	if (cursorOffset < 0) return;
+
+	// Create a range object and select the contents of the element
+	const range = document.createRange();
+	range.selectNodeContents(elem);
+
+	// Create a TreeWalker to traverse the element and its descendants
+	const walker = document.createTreeWalker(elem, NodeFilter.SHOW_TEXT, null, false);
+
+	let currentNode;
+	let offset = 0;
+
+	// Traverse the TreeWalker until the offset is reached
+	while ((currentNode = walker.nextNode())) {
+		const nodeLength = currentNode.length;
+
+		// If the current node's length combined with the offset exceeds the target offset,
+		// set the range and selection accordingly and exit the loop
+		if (offset + nodeLength >= cursorOffset) {
+			range.setStart(currentNode, cursorOffset - offset);
+			range.setEnd(currentNode, cursorOffset - offset);
+			const selection = getSelection();
+			selection.removeAllRanges();
+			selection.addRange(range);
+			break;
+		}
+
+		offset += nodeLength;
+	}
+}
+
 // ---- AUTHENTICATION ----
 
 function openAuthWindow() {
