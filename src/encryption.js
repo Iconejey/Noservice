@@ -39,7 +39,7 @@ class Encryption {
 
 		// Try to decrypt the private key verif to check if the key is correct
 		const private_key_verif = Buffer.from(process.env.PRIVATE_KEY_VERIF, 'hex');
-		const decrypted_private_key_verif = this.decrypt(private_key_verif, null);
+		const decrypted_private_key_verif = this.decryptJSON(private_key_verif, null);
 
 		if (decrypted_private_key_verif !== process.env.ADMIN_DEVICE_ID) {
 			this.private_key = null;
@@ -55,20 +55,29 @@ class Encryption {
 		return this.encryptKeyWithPassword(this.private_key, hashed_password);
 	}
 
-	// Encrypt data
-	encrypt(data, hashed_password) {
+	// Encrypt buffer
+	encryptBuffer(buffer, hashed_password) {
 		const user_key = this.generateUserKey(hashed_password);
 		const cipher = crypto.createCipheriv('aes-256-cbc', user_key, this.iv);
-		const str_data = JSON.stringify(data);
-		return Buffer.concat([cipher.update(str_data), cipher.final()]);
+		return Buffer.concat([cipher.update(buffer), cipher.final()]);
+	}
+
+	// Encrypt data
+	encryptJSON(data, hashed_password) {
+		return this.encryptBuffer(JSON.stringify(data), hashed_password);
+	}
+
+	// Decrypt buffer
+	decryptBuffer(buffer, hashed_password) {
+		const user_key = this.generateUserKey(hashed_password);
+		const decipher = crypto.createDecipheriv('aes-256-cbc', user_key, this.iv);
+		return Buffer.concat([decipher.update(buffer), decipher.final()]);
 	}
 
 	// Decrypt data
-	decrypt(data, hashed_password) {
-		const user_key = this.generateUserKey(hashed_password);
-		const decipher = crypto.createDecipheriv('aes-256-cbc', user_key, this.iv);
+	decryptJSON(data, hashed_password) {
 		try {
-			return JSON.parse(Buffer.concat([decipher.update(data), decipher.final()]).toString());
+			return JSON.parse(this.decryptBuffer(data, hashed_password).toString());
 		} catch (e) {
 			return null;
 		}
@@ -79,19 +88,34 @@ class Encryption {
 		return path.includes('/test@gmail.com/');
 	}
 
+	// Write encrypted buffer to file
+	writeBuffer(path, buffer, hashed_password) {
+		if (!this.isTestFile(path)) buffer = this.encryptBuffer(buffer, hashed_password);
+		fs.writeFileSync(path, buffer);
+	}
+
 	// Write encrypted data to file
-	write(path, data, hashed_password) {
-		if (!this.isTestFile(path)) data = this.encrypt(data, hashed_password);
+	writeJSON(path, data, hashed_password) {
+		if (!this.isTestFile(path)) data = this.encryptJSON(data, hashed_password);
 		fs.writeFileSync(path, data);
 	}
 
+	// Read encrypted buffer from file
+	readBuffer(path, hashed_password) {
+		if (!fs.existsSync(path)) return null;
+
+		const buffer = fs.readFileSync(path);
+		if (this.isTestFile(path)) return buffer;
+		return this.decryptBuffer(buffer, hashed_password);
+	}
+
 	// Read encrypted data from file
-	read(path, hashed_password) {
+	readJSON(path, hashed_password) {
 		if (!fs.existsSync(path)) return null;
 
 		const data = fs.readFileSync(path);
 		if (this.isTestFile(path)) return data.toString();
-		return this.decrypt(data, hashed_password);
+		return this.decryptJSON(data, hashed_password);
 	}
 }
 

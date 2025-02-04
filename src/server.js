@@ -143,10 +143,10 @@ app.post('/auth', ready, (req, res) => {
 		fs.mkdirSync(`./users/${email}`);
 
 		// Create password verification encryption file
-		encryption.write(`./users/${email}/verification.enc`, 'password', hashed_password);
+		encryption.writeJSON(`./users/${email}/verification.enc`, 'password', hashed_password);
 
 		// Create account name file
-		encryption.write(`./users/${email}/name.enc`, name, hashed_password);
+		encryption.writeJSON(`./users/${email}/name.enc`, name, hashed_password);
 	}
 
 	// Create Nosuite token
@@ -173,7 +173,7 @@ app.post('/account-info', ready, (req, res) => {
 	const { email, hashed_password } = data;
 
 	// Get account name
-	const name = encryption.read(`./users/${email}/name.enc`, hashed_password);
+	const name = encryption.readJSON(`./users/${email}/name.enc`, hashed_password);
 
 	// Send account info
 	res.send({ email, name });
@@ -261,7 +261,7 @@ io.on('connection', socket => {
 		if (!fs.existsSync(req.full_path) || !fs.statSync(req.full_path).isFile()) res({ error: 'Not found' });
 
 		// Read encrypted file
-		const content = encryption.read(req.full_path, req.auth.hashed_password);
+		const content = encryption.readJSON(req.full_path, req.auth.hashed_password);
 
 		// Send content
 		res({ content });
@@ -271,7 +271,7 @@ io.on('connection', socket => {
 	// Write file
 	onStorageCmd(socket, 'write', (req, res) => {
 		// Write encrypted file
-		encryption.write(req.full_path, req.content, req.auth.hashed_password);
+		encryption.writeJSON(req.full_path, req.content, req.auth.hashed_password);
 
 		// Send success
 		res({ success: true });

@@ -11,14 +11,14 @@ class Auth {
 	static verifyPassword(email, hashed_password) {
 		const path = `./users/${email}/verification.enc`;
 		if (encryption.isTestFile(path)) return true;
-		const verification_str = encryption.read(path, hashed_password);
+		const verification_str = encryption.readJSON(path, hashed_password);
 		return verification_str === 'password';
 	}
 
 	// Generate token
 	static generateToken(origin, email, days_before_exp, hashed_password) {
 		const exp = Date.now() + days_before_exp * 86_400_000;
-		return encryption.encrypt({ origin, email, hashed_password, exp }, null).toString('hex');
+		return encryption.encryptJSON({ origin, email, hashed_password, exp }, null).toString('hex');
 	}
 
 	// Get app origin
@@ -29,7 +29,7 @@ class Auth {
 
 	// Process token
 	static processToken(token, origin) {
-		const data = encryption.decrypt(Buffer.from(token, 'hex'), null);
+		const data = encryption.decryptJSON(Buffer.from(token, 'hex'), null);
 		if (!data) return { valid: false };
 
 		// Check if origin is correct
