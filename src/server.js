@@ -226,7 +226,7 @@ function onStorageCmd(socket, type, callback) {
 // Client socket
 io.on('connection', socket => {
 	// If service is not started, error
-	if (!encryption.is_ready) return socket.disconnect();
+	if (!encryption.is_ready) return setTimeout(() => socket.disconnect(), 1000);
 
 	// Create directory
 	onStorageCmd(socket, 'mkdir', (req, res) => {
