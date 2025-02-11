@@ -47,9 +47,9 @@ class AccountList extends CustomElement {
 			// Auth user in app on click
 			account.onclick = async () => {
 				const app_token = await this.getAppToken(account_token);
-				if (!app_token) return;
-				opener?.postMessage(app_token, '*');
-				close();
+				if (!app_token) return alert("Erreur lors de la récupération du token d'application");
+				// Redirect to app with token
+				location.href = `https://${origin_app}?token=${app_token}`;
 			};
 
 			// Remove account on right click
@@ -237,9 +237,23 @@ class AccountOption extends CustomElement {
 			const info = await getAccountInfo(this.token);
 
 			if (info.error) {
-				const account_list = this.closest('account-list');
-				account_list.accounts = account_list.accounts.filter(token => token !== this.token);
-				return this.remove();
+				this.classList.add('expired');
+
+				this.innerHTML = html`
+					<div class="account-circle"></div>
+					<div class="account-info">
+						<span class="account-name">Session expirée</span>
+						<span class="account-email">Veuillez vous reconnecter</span>
+					</div>
+				`;
+
+				this.onclick = () => {
+					const account_list = this.closest('account-list');
+					account_list.accounts = account_list.accounts.filter(token => token !== this.token);
+					account_list.addAccount();
+				};
+
+				return;
 			}
 
 			this.email = info.email;

@@ -203,7 +203,7 @@ async function fetchJSON(url, options) {
 		if (json?.error) console.error(json.error);
 
 		// Unothorized
-		if (json.error === 'Invalid token') {
+		if (location.hostname !== 'nosuite.ngwy.fr' && json.error === 'Invalid token') {
 			localStorage.removeItem('token');
 			alert('Votre session a expiré, veuillez vous reconnecter.');
 			return location.reload();
@@ -292,43 +292,102 @@ function setCursorPosition(elem, cursorOffset) {
 	}
 }
 
-// ---- AUTHENTICATION ----
+// ---- COLOR SCHEME ----
 
-function openAuthWindow() {
-	return new Promise(resolve => {
-		// Handle message from auth service
-		function message_handler(e) {
-			if (e.origin !== 'https://nosuite.ngwy.fr') return;
-			resolve(e.data);
-		}
+let scheme = null;
 
-		// Listen for message from auth service
-		addEventListener('message', message_handler, { once: true });
-
-		// Open auth window
-		open(`https://nosuite.ngwy.fr/auth?app=${location.host}`, 'auth', 'width=400,height=500');
-	});
+// Hex to RGB
+function hexToRgb(hex) {
+	const bigint = parseInt(hex.slice(1), 16);
+	return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
 }
 
+// RGB to Hex
+function rgbToHex(r, g, b) {
+	return '#' + ((r << 16) + (g << 8) + b).toString(16).padStart(6, '0');
+}
+
+// Mix two colors
+function mixColors(color1, color2, weight) {
+	const [r1, g1, b1] = hexToRgb(color1);
+	const [r2, g2, b2] = hexToRgb(color2);
+
+	const r = Math.round(r1 * weight + r2 * (1 - weight));
+	const g = Math.round(g1 * weight + g2 * (1 - weight));
+	const b = Math.round(b1 * weight + b2 * (1 - weight));
+
+	return rgbToHex(r, g, b);
+}
+
+// Load color scheme
+async function loadColorScheme() {
+	scheme = await fetchJSON('https://nosuite.ngwy.fr/theme.json');
+	if (scheme.error) return alert('Erreur lors du chargement du thème : ' + scheme.error);
+
+	let light_values = '';
+	let dark_values = '';
+	let accents = '';
+
+	for (const name of scheme.names) {
+		const light = scheme.light[name];
+		const dark = scheme.dark[name];
+
+		light_values += `--${name}: ${light};`;
+		dark_values += `--${name}: ${dark};`;
+
+		// If the color is an accent color
+		if (!name.includes('-')) {
+			light_values += `--${name}-trans: ${light}40;`;
+			light_values += `--${name}-txt: ${mixColors(light, scheme.light['txt-2'], 0.5)};`;
+
+			dark_values += `--${name}-trans: ${dark}30;`;
+			dark_values += `--${name}-txt: ${mixColors(dark, scheme.dark['txt-2'], 0.5)};`;
+
+			accents += `[accent="${name}"] {
+				--accent: var(--${name});
+				--accent-trans: var(--${name}-trans);
+				--accent-txt: var(--${name}-txt);
+			}`;
+		}
+	}
+
+	document.head.appendChild(
+		render(html`<style>
+			html { ${accents} }
+			body { ${light_values} }
+			body.dark { ${dark_values} }
+		</style>`)
+	);
+}
+
+loadColorScheme();
+
+// ---- AUTHENTICATION ----
+
+// Navigate to auth service
+function openAuthWindow() {
+	location.href = `https://nosuite.ngwy.fr/auth?app=${location.host}`;
+}
+
+// Check if user is signed in
 function userSignedIn() {
 	return !!localStorage.getItem('token');
 }
 
+// Authenticate user
 async function authenticate(force = false) {
 	// Nosuite auth service
-	if (force || !userSignedIn()) {
-		const popup_token = await openAuthWindow();
-		if (popup_token) localStorage.setItem('token', popup_token);
-	}
-
+	if (force || !userSignedIn()) return openAuthWindow();
 	return userSignedIn();
 }
 
+// Sign out
 function signOut() {
 	localStorage.removeItem('token');
 	location.reload();
 }
 
+// Get account info
 function getAccountInfo(token) {
 	return fetchJSON('https://nosuite.ngwy.fr/account-info', {
 		method: 'POST',

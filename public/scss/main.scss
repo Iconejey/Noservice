@@ -1,16 +1,19 @@
 @import './global.scss';
 
-body {
-	// Theme colors
-	--white-1: #ffffff;
-	--white-2: #f8f8f8;
-	--white-3: #e9e9e9;
-	--white-4: #d1d2d4;
-	--white-5: #a3a6ad;
-	--primary: #2f80ed;
+html {
+	height: 100%;
+	display: flex;
+	align-items: center;
+}
 
-	background-color: var(--white-1);
-	max-width: 400px;
+body {
+	--radius: 0.7rem;
+
+	flex: 1;
+	background-color: var(--bg-3);
+	color: var(--txt-2);
+	max-width: 430px;
+	min-height: 80%;
 	padding: 2em;
 	margin: 0 auto;
 
@@ -27,12 +30,12 @@ body {
 		font-size: 1.1rem;
 
 		#origin-app {
-			color: var(--primary);
+			color: var(--blue);
 		}
 	}
 
 	p {
-		color: var(--white-5);
+		color: var(--txt-3);
 		margin-top: 2em;
 	}
 
@@ -40,23 +43,23 @@ body {
 		margin-top: 2em;
 		display: flex;
 		flex-direction: column;
-		gap: 5px;
-		border-radius: 1rem;
+		gap: 3px;
+		border-radius: var(--radius);
+		border: 1px solid var(--bg-1);
 		overflow: hidden;
 		user-select: none;
 
 		& > * {
-			padding: 0.8em 1em;
-			background-color: var(--white-2);
+			padding: 0.7em 1em;
+			background-color: var(--bg-4);
 			display: flex;
 			align-items: center;
 			gap: 0.5em;
 			border: none;
-			font-size: 1rem;
 			outline: none !important;
 
 			&:hover {
-				background-color: var(--white-3);
+				background-color: var(--bg-5);
 			}
 
 			.icon {
@@ -64,11 +67,22 @@ body {
 			}
 		}
 
+		input,
+		button {
+			font-size: 1em;
+			color: var(--txt-2);
+			padding: 1em 1.2em;
+		}
+
 		account-option {
 			gap: 0.8em;
 
+			&.expired {
+				color: var(--red);
+			}
+
 			.account-circle {
-				background-color: var(--white-4);
+				background-color: var(--txt-3);
 				border-radius: 50%;
 				display: flex;
 				min-width: 3rem;
@@ -85,9 +99,16 @@ body {
 				gap: 0.1em;
 
 				.account-email {
-					color: var(--white-5);
+					color: var(--txt-3);
 				}
 			}
 		}
+	}
+}
+
+// Mobile
+@media (max-width: 480px) {
+	body {
+		--radius: 0.8rem;
 	}
 }
