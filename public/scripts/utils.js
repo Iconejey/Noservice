@@ -488,11 +488,28 @@ class STORAGE {
 		});
 	}
 
-	// Walk recursively and apply a callback to each file
-	static async traverse(path, callback) {
-		for (const elem of await STORAGE.ls(path)) {
-			if (elem.is_directory) await STORAGE.traverse(elem.path, callback);
-			else await callback(elem);
+	// Apply a callback to each file in storage
+	static async traverse(callback) {
+		let current_paths = ['.'];
+
+		// While we have new paths to explore
+		while (current_paths.length) {
+			const new_paths = [];
+
+			// List all paths in parallel
+			const cmds = current_paths.map(path => ({ type: 'ls', path }));
+			const responses = await STORAGE.sendCmds(cmds);
+
+			// For each element in each path
+			for (const response of responses) {
+				for (const elem of response) {
+					if (elem.is_directory) new_paths.push(elem.path);
+					else await callback(elem);
+				}
+			}
+
+			// Update the current paths
+			current_paths = new_paths;
 		}
 	}
 }
