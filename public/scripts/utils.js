@@ -585,3 +585,44 @@ class DATE {
 		});
 	}
 }
+
+// ---- AI GENERATION ----
+
+class AI {
+	// Generate text using the AI
+	static generate(opt, intermediate_callback) {
+		return new Promise(async (resolve, reject) => {
+			// Create a unique id for the generation
+			const id = `ai-${Date.now().toString(36)}`;
+
+			// The result
+			let result = '';
+
+			// Listen for the generation chunks
+			SOCKET.on(id, chunk => {
+				// Error handling
+				if (chunk.error) {
+					SOCKET.off(id);
+					app.toast('red', 3000, 'Error while generating text.', () => alert(chunk.error));
+					return reject(chunk.error);
+				}
+
+				// If the chunk is final
+				if (chunk.final) {
+					SOCKET.off(id);
+					console.log(result);
+					return resolve(result);
+				}
+
+				// Append the chunk to the result
+				result += chunk;
+
+				// Call the intermediate callback
+				intermediate_callback?.(chunk, result);
+			});
+
+			// Send the generation request
+			SOCKET.emit('generate-text', { ...opt, id });
+		});
+	}
+}

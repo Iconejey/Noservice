@@ -1,3 +1,4 @@
+// NPM modules
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -7,11 +8,16 @@ const cors = require('cors');
 const chrono = require('chrono-node');
 const { createCanvas, Image } = require('canvas');
 
-const encryption = require('./encryption');
-const Auth = require('./auth');
-
 // Load environment variables
 require('dotenv').config();
+
+// Local modules
+const encryption = require('./encryption');
+const Auth = require('./auth');
+const AI = require('./ai');
+
+// Initialize AI
+const ai = new AI(process.env.GEMINI_API_KEY);
 
 // Create server
 const app = express();
@@ -443,6 +449,27 @@ io.on('connection', socket => {
 			date: parsed.start.date().getTime() - 3600000,
 			text: parsed.text
 		});
+	});
+
+	// Generate text using AI
+	socket.on('generate-text', async opt => {
+		try {
+			// Start generation
+			const stream = await ai.generate(opt);
+
+			// Send the text stream
+			for await (const chunk of stream) {
+				// Send the text chunk
+				socket.emit(opt.id, chunk.text());
+			}
+
+			// End the stream
+			socket.emit(opt.id, { final: true });
+		} catch (e) {
+			// If an error occurs, send it
+			socket.emit(opt.id, { error: e.message });
+			ai.signalError();
+		}
 	});
 });
 
