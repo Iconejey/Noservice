@@ -421,23 +421,27 @@ class PATH {
 }
 
 class STORAGE {
-	// Send command to storage service
-	static sendCmd(type, path, content = null) {
+	// Send commands to storage service
+	static sendCmds(cmds) {
 		return new Promise((resolve, reject) => {
-			// Command object
-			const cmd = {
+			cmds = cmds.map(cmd => ({
+				// Command
+				...cmd,
+
+				// Auth
 				token: localStorage.getItem('token'),
 				app: location.host,
-				type,
-				path,
-				content,
 				client_id: CLIENT_ID
-			};
+			}));
 
-			// Send command
-			SOCKET.emit(type, cmd, response => {
-				if (response.error) return reject(response.error);
-				resolve(response);
+			// Send commands
+			SOCKET.emit('storage', cmds, responses => {
+				// Error handling
+				if (responses.error) return reject(responses.error);
+				const errors = responses.filter(r => r.error);
+				if (errors.length) return reject(errors[0].error);
+
+				resolve(responses);
 			});
 		});
 	}
@@ -452,50 +456,27 @@ class STORAGE {
 	}
 
 	// List files and directories in a path
-	static ls(path) {
-		return STORAGE.sendCmd('ls', path);
+	static async ls(path) {
+		const responses = await STORAGE.sendCmds([{ type: 'ls', path }]);
+		return responses[0];
 	}
 
 	// Read file content
 	static async read(path) {
-		const response = await STORAGE.sendCmd('read', path);
-		return response.content;
+		const responses = await STORAGE.sendCmds([{ type: 'read', path }]);
+		return responses[0].content;
 	}
 
 	// Write content to a file
-	static write(path, content) {
-		return STORAGE.sendCmd('write', path, content);
+	static async write(path, content) {
+		const responses = await STORAGE.sendCmds([{ type: 'write', path, content }]);
+		return responses[0];
 	}
 
 	// Write a chunk of data_url to a file
-	static writeChunk(path, chunk, final = false) {
-		return STORAGE.sendCmd('write-chunk', path, { chunk, final });
-	}
-
-	// Upload an url_data
-	static async uploadUrlData(url_data, path, progress_callback) {
-		const chunk_size = 1024 * 950;
-		let offset = 0;
-
-		// Write chunk by chunk
-		while (offset < url_data.length) {
-			progress_callback(offset / url_data.length);
-			const chunk = url_data.slice(offset, offset + chunk_size);
-			await STORAGE.writeChunk(path, chunk, offset + chunk_size >= url_data.length);
-			offset += chunk_size;
-		}
-
-		progress_callback(1);
-	}
-
-	// Create a directory
-	static mkdir(path) {
-		return STORAGE.sendCmd('mkdir', path);
-	}
-
-	// Remove a file or directory
-	static rm(path) {
-		return STORAGE.sendCmd('rm', path);
+	static async writeChunk(path, chunk, final = false) {
+		const responses = await STORAGE.sendCmds([{ type: 'write-chunk', path, chunk, final }]);
+		return responses[0];
 	}
 
 	// Read the data of a file input

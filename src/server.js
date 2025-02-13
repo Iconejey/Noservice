@@ -277,47 +277,44 @@ app.get('/resized/:size/*', auth, async (req, res) => {
 
 // ---- Socket Storage ----
 
-// Use sockets to handle storage commands
-function onStorageCmd(socket, type, callback) {
-	// Listen for command event and check token before executing callback
-	socket.on(type, (cmd, res) => {
-		// If no token, error
-		if (!cmd.token) return res({ error: 'No token provided' });
+// Process storage command before executing callback
+function processCmd(socket, cmd, res, callback) {
+	// If no token, error
+	if (!cmd.token) return res({ error: 'No token provided' });
 
-		// Process token
-		const token_data = Auth.processToken(cmd.token, cmd.app);
+	// Process token
+	const token_data = Auth.processToken(cmd.token, cmd.app);
 
-		// If token is invalid, error
-		if (!token_data.valid) return res({ error: 'Invalid token' });
+	// If token is invalid, error
+	if (!token_data.valid) return res({ error: 'Invalid token' });
 
-		// Attach token data to request
-		cmd.auth = token_data;
+	// Attach token data to request
+	cmd.auth = token_data;
 
-		// Add socket to user room for file changes
-		socket.join(token_data.email);
+	// Add socket to user room for file changes
+	socket.join(token_data.email);
 
-		// Set storage root and full path
-		cmd.storage_root = PATH.join(__dirname, '..', 'users', token_data.email, cmd.app);
-		cmd.full_path = PATH.join(cmd.storage_root, cmd.path);
+	// Set storage root and full path
+	cmd.storage_root = PATH.join(__dirname, '..', 'users', token_data.email, cmd.app);
+	cmd.full_path = PATH.join(cmd.storage_root, cmd.path);
 
-		// If full path is outside of storage root, error
-		if (!cmd.full_path.startsWith(cmd.storage_root)) return res({ error: 'Forbidden' });
+	// If full path is outside of storage root, error
+	if (!cmd.full_path.startsWith(cmd.storage_root)) return res({ error: 'Forbidden' });
 
-		// Create app storage directory if it doesn't exist
-		if (!fs.existsSync(cmd.storage_root)) fs.mkdirSync(cmd.storage_root);
+	// Create app storage directory if it doesn't exist
+	if (!fs.existsSync(cmd.storage_root)) fs.mkdirSync(cmd.storage_root);
 
-		// Execute callback
-		const needs_broadcast = callback(cmd, res);
+	// Execute callback
+	const needs_broadcast = callback();
 
-		// If broadcast is needed, emit file change event
-		if (needs_broadcast) {
-			// Remove authentication data
-			delete cmd.auth;
-			delete cmd.token;
+	// If broadcast is needed, emit file change event
+	if (needs_broadcast) {
+		// Remove authentication data
+		delete cmd.auth;
+		delete cmd.token;
 
-			io.to(token_data.email).emit('file-change', cmd);
-		}
-	});
+		io.to(token_data.email).emit('file-change', cmd);
+	}
 }
 
 // Client socket
@@ -325,103 +322,115 @@ io.on('connection', socket => {
 	// If service is not started, error
 	if (!encryption.is_ready) return setTimeout(() => socket.disconnect(), 1000);
 
-	// Create directory
-	onStorageCmd(socket, 'mkdir', (req, res) => {
-		// Create directory if it doesn't exist
-		if (!fs.existsSync(req.full_path)) fs.mkdirSync(req.full_path);
+	// Storage commands
+	socket.on('storage', (cmds, res) => {
+		const responses = [];
 
-		// Send success
-		res({ success: true });
-		return false;
-	});
+		for (const cmd of cmds) {
+			processCmd(socket, cmd, res, () => {
+				// Create directory
+				if (cmd.type === 'mkdir') {
+					// Create directory if it doesn't exist
+					if (!fs.existsSync(cmd.full_path)) fs.mkdirSync(cmd.full_path);
 
-	// List files in directory
-	onStorageCmd(socket, 'ls', (req, res) => {
-		// Check if path exists and is a directory
-		if (!fs.existsSync(req.full_path) || !fs.statSync(req.full_path).isDirectory()) res({ error: 'Not found' });
-		let files;
+					// Send success
+					responses.push({ success: true });
+					return false;
+				}
 
-		try {
-			// List files
-			files = fs.readdirSync(req.full_path, { withFileTypes: true }).map(file => ({
-				name: file.name,
-				path: PATH.join(req.path, file.name),
-				is_directory: file.isDirectory()
-			}));
-		} catch (e) {
-			files = [];
+				// List files in directory
+				if (cmd.type === 'ls') {
+					// Check if path exists and is a directory
+					if (!fs.existsSync(cmd.full_path) || !fs.statSync(cmd.full_path).isDirectory()) responses.push({ error: 'Not found' });
+					let files;
+
+					try {
+						// List files
+						files = fs.readdirSync(cmd.full_path, { withFileTypes: true }).map(file => ({
+							name: file.name,
+							path: PATH.join(cmd.path, file.name),
+							is_directory: file.isDirectory()
+						}));
+					} catch (e) {
+						files = [];
+					}
+
+					// Send files
+					responses.push(files);
+					return false;
+				}
+
+				// Read file
+				if (cmd.type === 'read') {
+					// Check if file exists
+					if (!fs.existsSync(cmd.full_path) || !fs.statSync(cmd.full_path).isFile()) responses.push({ error: 'Not found' });
+
+					// Read encrypted file
+					const content = encryption.readJSON(cmd.full_path, cmd.auth.hashed_password);
+
+					// Send content
+					responses.push({ content });
+					return false;
+				}
+
+				// Write file
+				if (cmd.type === 'write') {
+					// Write encrypted file
+					encryption.writeJSON(cmd.full_path, cmd.content, cmd.auth.hashed_password);
+
+					// Send success
+					responses.push({ success: true });
+					return true;
+				}
+
+				// Write chunk of url_data
+				if (cmd.type === 'write-chunk') {
+					const temp_path = cmd.full_path + '.temp';
+					const { chunk, final } = cmd.content;
+
+					// Write encrypted file
+					fs.appendFileSync(temp_path, chunk);
+
+					// Create the image file from the temp dataURL file if it's the final chunk
+					if (final) {
+						// Get the dataURL from the temp file
+						const data_url = fs.readFileSync(temp_path, 'utf8');
+
+						// Create the image file
+						const buffer = Buffer.from(data_url.split(',')[1], 'base64');
+
+						// Write the image file
+						encryption.writeBuffer(cmd.full_path, buffer, cmd.auth.hashed_password);
+
+						// Remove the temp file
+						fs.rmSync(temp_path);
+					}
+
+					// Send success
+					responses.push({ success: true });
+					return final;
+				}
+
+				// Remove file or directory
+				if (cmd.type === 'rm') {
+					// Check if file exists
+					if (!fs.existsSync(cmd.full_path)) {
+						responses.push({ error: 'Not found' });
+						return false;
+					}
+
+					// Remove file or directory
+					fs.rmSync(cmd.full_path, { recursive: true });
+
+					// Send success
+					responses.push({ success: true });
+					return true;
+				}
+			});
 		}
 
-		// Send files
-		res(files);
-		return false;
-	});
-
-	// Read file
-	onStorageCmd(socket, 'read', (req, res) => {
-		// Check if file exists
-		if (!fs.existsSync(req.full_path) || !fs.statSync(req.full_path).isFile()) res({ error: 'Not found' });
-
-		// Read encrypted file
-		const content = encryption.readJSON(req.full_path, req.auth.hashed_password);
-
-		// Send content
-		res({ content });
-		return false;
-	});
-
-	// Write file
-	onStorageCmd(socket, 'write', (req, res) => {
-		// Write encrypted file
-		encryption.writeJSON(req.full_path, req.content, req.auth.hashed_password);
-
-		// Send success
-		res({ success: true });
-		return true;
-	});
-
-	// Write chunk of url_data
-	onStorageCmd(socket, 'write-chunk', (req, res) => {
-		const temp_path = req.full_path + '.temp';
-		const { chunk, final } = req.content;
-
-		// Write encrypted file
-		fs.appendFileSync(temp_path, chunk);
-
-		// Create the image file from the temp dataURL file if it's the final chunk
-		if (final) {
-			// Get the dataURL from the temp file
-			const data_url = fs.readFileSync(temp_path, 'utf8');
-
-			// Create the image file
-			const buffer = Buffer.from(data_url.split(',')[1], 'base64');
-
-			// Write the image file
-			encryption.writeBuffer(req.full_path, buffer, req.auth.hashed_password);
-
-			// Remove the temp file
-			fs.rmSync(temp_path);
-		}
-
-		// Send success
-		res({ success: true });
-		return final;
-	});
-
-	// Remove file or directory
-	onStorageCmd(socket, 'rm', (req, res) => {
-		// Check if file exists
-		if (!fs.existsSync(req.full_path)) {
-			res({ error: 'Not found' });
-			return false;
-		}
-
-		// Remove file or directory
-		fs.rmSync(req.full_path, { recursive: true });
-
-		// Send success
-		res({ success: true });
-		return true;
+		// Send responses
+		res(responses);
 	});
 
 	// Parse date NLP using chrono (both in English and French)
