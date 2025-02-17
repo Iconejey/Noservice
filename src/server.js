@@ -338,25 +338,67 @@ io.on('connection', socket => {
 					return false;
 				}
 
-				// List files in directory
+				// List elements in a given directory
 				if (cmd.type === 'ls') {
 					// Check if path exists and is a directory
 					if (!fs.existsSync(cmd.full_path) || !fs.statSync(cmd.full_path).isDirectory()) responses.push({ error: 'Not found' });
-					let files;
+					let elems;
 
+					// List elems
 					try {
-						// List files
-						files = fs.readdirSync(cmd.full_path, { withFileTypes: true }).map(file => ({
-							name: file.name,
-							path: PATH.join(cmd.path, file.name),
-							is_directory: file.isDirectory()
+						elems = fs.readdirSync(cmd.full_path, { withFileTypes: true }).map(elem => ({
+							name: elem.name,
+							path: PATH.join(cmd.path, elem.name),
+							is_directory: elem.isDirectory()
 						}));
 					} catch (e) {
-						files = [];
+						elems = [];
 					}
 
-					// Send files
-					responses.push(files);
+					// Send elems
+					responses.push(elems);
+					return false;
+				}
+
+				// List recursively elements in a given directory
+				if (cmd.type === 'ls-r') {
+					// Check if path exists and is a directory
+					if (!fs.existsSync(cmd.full_path) || !fs.statSync(cmd.full_path).isDirectory()) responses.push({ error: 'Not found' });
+
+					const total_elems = [];
+					let dirs_to_check = [cmd.path];
+
+					while (dirs_to_check.length > 0) {
+						const subdirs = [];
+
+						for (const dir of dirs_to_check) {
+							// Get the full path
+							const full_path = PATH.join(cmd.storage_root, dir);
+
+							// List elems
+							try {
+								const current_elems = fs.readdirSync(full_path, { withFileTypes: true }).map(file => ({
+									name: file.name,
+									path: PATH.join(dir, file.name),
+									is_directory: file.isDirectory()
+								}));
+
+								// Add to total elems
+								total_elems.push(...current_elems);
+
+								// Add subdirs
+								for (const elem of current_elems) if (elem.is_directory) subdirs.push(elem.path);
+							} catch (e) {
+								continue;
+							}
+						}
+
+						// Update dirs to check
+						dirs_to_check = subdirs;
+					}
+
+					// Send elems
+					responses.push(total_elems);
 					return false;
 				}
 
