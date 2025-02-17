@@ -461,6 +461,12 @@ class STORAGE {
 		return responses[0];
 	}
 
+	// List files and directories recursively in a path
+	static async lsR(path) {
+		const responses = await STORAGE.sendCmds([{ type: 'ls-r', path }]);
+		return responses[0];
+	}
+
 	// Read file content
 	static async read(path) {
 		const responses = await STORAGE.sendCmds([{ type: 'read', path }]);
@@ -476,6 +482,34 @@ class STORAGE {
 	// Write a chunk of data_url to a file
 	static async writeChunk(path, chunk, final = false) {
 		const responses = await STORAGE.sendCmds([{ type: 'write-chunk', path, chunk, final }]);
+		return responses[0];
+	}
+
+	// Upload an url_data
+	static async uploadUrlData(url_data, path, progress_callback) {
+		const chunk_size = 1024 * 950;
+		let offset = 0;
+
+		// Write chunk by chunk
+		while (offset < url_data.length) {
+			progress_callback(offset / url_data.length);
+			const chunk = url_data.slice(offset, offset + chunk_size);
+			await STORAGE.writeChunk(path, chunk, offset + chunk_size >= url_data.length);
+			offset += chunk_size;
+		}
+
+		progress_callback(1);
+	}
+
+	// Create a directory
+	static async mkdir(path) {
+		const responses = await STORAGE.sendCmds([{ type: 'mkdir', path }]);
+		return responses[0];
+	}
+
+	// Remove a file or directory
+	static async rm(path) {
+		const responses = await STORAGE.sendCmds([{ type: 'rm', path }]);
 		return responses[0];
 	}
 
@@ -601,7 +635,7 @@ class AI {
 				// Error handling
 				if (chunk.error) {
 					SOCKET.off(id);
-					app.toast('red', 3000, 'Error while generating text.', () => alert(chunk.error));
+					app.toast('red', 8000, 'Error while generating text.', () => alert(chunk.error));
 					return reject(chunk.error);
 				}
 
