@@ -428,7 +428,7 @@ io.on('connection', socket => {
 				// Write chunk of url_data
 				if (cmd.type === 'write-chunk') {
 					const temp_path = cmd.full_path + '.temp';
-					const { chunk, final } = cmd.content;
+					const { chunk, final } = cmd;
 
 					// Write encrypted file
 					fs.appendFileSync(temp_path, chunk);
