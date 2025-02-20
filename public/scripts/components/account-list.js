@@ -88,6 +88,9 @@ class AccountList extends CustomElement {
 	}
 
 	async addAccount() {
+		// Show warning
+		$('#warning').classList.remove('hidden');
+
 		const email = await this.emailForm();
 
 		// Send email and get info from server

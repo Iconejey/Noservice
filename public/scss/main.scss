@@ -37,6 +37,14 @@ body {
 	p {
 		color: var(--txt-3);
 		margin-top: 2em;
+
+		&#warning {
+			color: var(--yellow);
+
+			&.hidden {
+				display: none;
+			}
+		}
 	}
 
 	form {
