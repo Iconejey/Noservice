@@ -46,10 +46,21 @@ class AccountList extends CustomElement {
 
 			// Auth user in app on click
 			account.onclick = async () => {
+				// Get app token
 				const app_token = await this.getAppToken(account_token);
 				if (!app_token) return alert("Erreur lors de la récupération du token d'application");
+
+				// Create auth url
+				const auth_url = `https://${origin_app}?token=${app_token}`;
+
+				// If the token is for the demo account, copy the url to clipboard instead of redirecting
+				if (account.email === 'demo.nosuite@gmail.com') {
+					navigator.clipboard.writeText(auth_url);
+					return alert('URL copiée dans le presse-papiers');
+				}
+
 				// Redirect to app with token
-				location.href = `https://${origin_app}?token=${app_token}`;
+				location.href = auth_url;
 			};
 
 			// Remove account on right click

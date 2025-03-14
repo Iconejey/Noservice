@@ -119,7 +119,9 @@ app.post('/auth/:app', ready, (req, res) => {
 	if (!token_data.valid) return res.send('Invalid token');
 
 	// Generate app token
-	const app_token = Auth.generateToken(req.params.app, token_data.email, 7, token_data.hashed_password);
+	const is_demo = token_data.email === 'demo.nosuite@gmail.com';
+	const exp = is_demo ? 0.1 : 7;
+	const app_token = Auth.generateToken(req.params.app, token_data.email, exp, token_data.hashed_password);
 
 	// Send app token
 	res.send({ token: app_token });
@@ -304,8 +306,15 @@ function processCmd(socket, cmd, res, callback) {
 	// Create app storage directory if it doesn't exist
 	if (!fs.existsSync(cmd.storage_root)) fs.mkdirSync(cmd.storage_root);
 
-	// Execute callback
-	const needs_broadcast = callback();
+	let needs_broadcast = false;
+
+	try {
+		// Execute callback
+		needs_broadcast = callback();
+	} catch (err) {
+		// Send error
+		return res({ error: err.message });
+	}
 
 	// If broadcast is needed, emit file change event
 	if (needs_broadcast) {
