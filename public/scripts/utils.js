@@ -640,9 +640,13 @@ class DATE {
 class AI {
 	// Generate text using the AI
 	static generate(opt, intermediate_callback) {
+		if (!opt.system) opt.system = '';
+		if (!opt.user) opt.user = '';
+
 		return new Promise(async (resolve, reject) => {
 			// Create a unique id for the generation
 			const id = `ai-${Date.now().toString(36)}`;
+			console.log(id, (opt.system + opt.user).length / 4);
 
 			// The result
 			let result = '';
@@ -652,7 +656,6 @@ class AI {
 				// Error handling
 				if (chunk.error) {
 					SOCKET.off(id);
-					app.toast('red', 8000, 'Error while generating text.', () => alert(chunk.error));
 					return reject(chunk.error);
 				}
 

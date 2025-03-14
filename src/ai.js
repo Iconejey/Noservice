@@ -30,7 +30,7 @@ class AI {
 			this.model = this.genAI.getGenerativeModel({ systemInstruction: opt.system, model: model.name });
 
 			// Start generation
-			const result = await this.model.generateContentStream(opt.prompt);
+			const result = await this.model.generateContentStream(opt.user);
 			return result.stream;
 		} catch (error) {
 			// If 503 error, try another model
