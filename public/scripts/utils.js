@@ -374,6 +374,23 @@ function userSignedIn() {
 	return !!localStorage.getItem('token');
 }
 
+// Auth from url token
+function authFromURL() {
+	// Get token from URL
+	const url = new URL(location.href);
+	const url_token = url.searchParams.get('token');
+
+	// Ignore if no token in URL
+	if (!url_token) return;
+
+	// Remove token from URL
+	url.searchParams.delete('token');
+	history.replaceState('app', '', url);
+
+	// Set the token in local storage
+	localStorage.setItem('token', url_token);
+}
+
 // Authenticate user
 async function authenticate(force = false) {
 	// Nosuite auth service
