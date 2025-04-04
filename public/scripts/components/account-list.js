@@ -14,6 +14,16 @@ class AccountList extends CustomElement {
 		this.whenReady(() => this.selectAccount());
 	}
 
+	async loadedAllAccounts() {
+		// Wait for all accounts to be loaded
+		const promises = [];
+		for (const account of this.$$('account-option')) {
+			promises.push(account.loaded_promise);
+		}
+
+		return Promise.all(promises);
+	}
+
 	async getAppToken(account_token) {
 		const json = await fetchJSON(`/auth/${origin_app}`, {
 			method: 'POST',
@@ -28,7 +38,7 @@ class AccountList extends CustomElement {
 		return json.token;
 	}
 
-	selectAccount() {
+	async selectAccount() {
 		this.innerHTML = html`
 			<form>
 				<div id="add-account">
@@ -72,7 +82,45 @@ class AccountList extends CustomElement {
 			};
 		}
 
+		// Add account on click
 		add_btn.onclick = e => this.addAccount();
+
+		// Wait for all accounts to be loaded
+		await this.loadedAllAccounts();
+
+		// Include demo account
+		this.includeDemoAccount();
+	}
+
+	async includeDemoAccount() {
+		// Check if "demo" is in search params
+		const params = new URLSearchParams(location.search);
+		if (!params.has('demo')) return;
+
+		// Check if demo account is already in accounts
+		for (const span of $$('.account-email')) {
+			if (span.innerText === 'demo@nosuite.ngwy.fr') return;
+		}
+
+		// Sign in with demo account
+		const json = await fetchJSON('/auth', {
+			method: 'POST',
+			body: {
+				email: 'demo@nosuite.ngwy.fr',
+				password: 'password',
+				app: origin_app
+			}
+		});
+
+		// If error, alert
+		if (json.error) {
+			alert("Erreur lors de l'authentification : " + json.error);
+			return;
+		}
+
+		// Add demo account to accounts
+		this.accounts = [...this.accounts, json.token];
+		this.selectAccount();
 	}
 
 	emailForm() {
@@ -238,6 +286,7 @@ defineComponent(html`<account-list />`);
 class AccountOption extends CustomElement {
 	constructor() {
 		super();
+		this.loaded_promise = new Promise(resolve => (this.loaded_promise_resolve = resolve));
 
 		this.whenReady(async () => {
 			this.innerHTML = html`
@@ -287,6 +336,9 @@ class AccountOption extends CustomElement {
 					<span class="account-email">${this.email}</span>
 				</div>
 			`;
+
+			// Set as loaded
+			this.loaded_promise_resolve(true);
 		});
 	}
 }

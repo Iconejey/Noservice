@@ -376,8 +376,16 @@ function userSignedIn() {
 
 // Auth from url token
 function authFromURL() {
-	// Get token from URL
+	// Create URL object
 	const url = new URL(location.href);
+
+	// Check if "demo" search param is present
+	if (url.searchParams.has('demo')) {
+		// Redeirect to demo auth page
+		location.href = `https://nosuite.ngwy.fr/auth?demo&app=${location.host}`;
+	}
+
+	// Get the token from the URL
 	const url_token = url.searchParams.get('token');
 
 	// Ignore if no token in URL

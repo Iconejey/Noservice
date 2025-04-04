@@ -85,7 +85,7 @@ class Encryption {
 
 	// Determine if the path is a test file
 	isTestFile(path) {
-		return path.includes('/test@gmail.com/') || path.includes('/demo.nosuite@gmail.com/');
+		return path.includes('/test@gmail.com/') || path.includes('/demo@nosuite.ngwy.fr/');
 	}
 
 	// Write encrypted buffer to file
