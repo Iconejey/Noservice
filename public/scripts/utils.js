@@ -490,6 +490,16 @@ class STORAGE {
 		return responses[0].content;
 	}
 
+	// Read multiple files content
+	static async readAll(paths) {
+		if (!paths.length) return [];
+		if (paths[0].path) paths = paths.map(p => p.path);
+
+		const cmds = paths.map(path => ({ type: 'read', path }));
+		const responses = await STORAGE.sendCmds(cmds);
+		return responses.map(r => r.content);
+	}
+
 	// Write content to a file
 	static async write(path, content) {
 		const responses = await STORAGE.sendCmds([{ type: 'write', path, content }]);
