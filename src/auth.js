@@ -29,6 +29,8 @@ class Auth {
 
 	// Process token
 	static processToken(token, origin) {
+		if (!token) return { valid: false };
+
 		const data = encryption.decryptJSON(Buffer.from(token, 'hex'), null);
 		if (!data) return { valid: false };
 
