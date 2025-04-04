@@ -116,7 +116,7 @@ app.post('/auth/:app', ready, (req, res) => {
 	const token_data = Auth.processToken(token, process.env.AUTH_SERVER);
 
 	// If token is invalid, error
-	if (!token_data.valid) return res.send('Invalid token');
+	if (!token_data.valid) return res.send({ error: 'Invalid token' });
 
 	// Generate app token
 	const is_demo = token_data.email === 'demo.nosuite@gmail.com';
