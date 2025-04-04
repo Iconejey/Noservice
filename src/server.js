@@ -120,7 +120,7 @@ app.post('/auth/:app', ready, (req, res) => {
 
 	// Generate app token
 	const is_demo = token_data.email === 'demo.nosuite@gmail.com';
-	const exp = is_demo ? 0.1 : 7;
+	const exp = is_demo ? 1 / 24 : 7;
 	const app_token = Auth.generateToken(req.params.app, token_data.email, exp, token_data.hashed_password);
 
 	// Send app token
