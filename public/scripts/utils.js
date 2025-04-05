@@ -651,6 +651,13 @@ class DATE {
 			});
 		});
 	}
+
+	// Check if given date (ms) is today
+	static isToday(date_ms) {
+		const today = new Date();
+		const date = new Date(+date_ms);
+		return date.toDateString() === today.toDateString();
+	}
 }
 
 // ---- AI GENERATION ----
