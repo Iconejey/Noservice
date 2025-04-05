@@ -119,7 +119,7 @@ app.post('/auth/:app', ready, (req, res) => {
 	if (!token_data.valid) return res.send({ error: 'Invalid token' });
 
 	// Generate app token
-	const is_demo = token_data.email === 'demo.nosuite@gmail.com';
+	const is_demo = token_data.email === 'demo@nosuite.ngwy.fr';
 	const exp = is_demo ? 1 / 24 : 7;
 	const app_token = Auth.generateToken(req.params.app, token_data.email, exp, token_data.hashed_password);
 
@@ -161,7 +161,9 @@ app.post('/auth', ready, (req, res) => {
 	}
 
 	// Create Nosuite token
-	const token = Auth.generateToken(process.env.AUTH_SERVER, email, 90, hashed_password);
+	const is_demo = email === 'demo@nosuite.ngwy.fr';
+	const exp = is_demo ? 1 / 24 : 90;
+	const token = Auth.generateToken(process.env.AUTH_SERVER, email, exp, hashed_password);
 
 	// Send token
 	res.send({ token });
