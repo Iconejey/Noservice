@@ -5,6 +5,8 @@ const fs = require('fs');
 require('dotenv').config();
 
 class Encryption {
+	static test_accounts = ['test@gmail.com', 'demo@nosuite.ngwy.fr', 'template@nosuite.ngwy.fr'];
+
 	// Check if private key is set
 	get is_ready() {
 		return this.private_key !== null;
@@ -85,7 +87,7 @@ class Encryption {
 
 	// Determine if the path is a test file
 	isTestFile(path) {
-		return path.includes('/test@gmail.com/') || path.includes('/demo@nosuite.ngwy.fr/');
+		return Encryption.test_accounts.some(email => path.includes(`/${email}/`));
 	}
 
 	// Write encrypted buffer to file
