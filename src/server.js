@@ -123,6 +123,18 @@ app.post('/auth/:app', ready, (req, res) => {
 	const exp = is_demo ? 1 / 24 : 7;
 	const app_token = Auth.generateToken(req.params.app, token_data.email, exp, token_data.hashed_password);
 
+	// Id it is a demo account
+	if (is_demo) {
+		// Copy the template account into the demo account
+		const demo_path = PATH.join(__dirname, '..', 'users', 'demo@nosuite.ngwy.fr');
+		const template_path = PATH.join(__dirname, '..', 'users', 'template@nosuite.ngwy.fr');
+
+		fs.rmSync(demo_path, { recursive: true, force: true });
+		fs.mkdirSync(demo_path, { recursive: true });
+		fs.cpSync(template_path, demo_path, { recursive: true });
+		fs.writeFileSync(PATH.join(demo_path, 'name.enc'), 'Compte démo');
+	}
+
 	// Send app token
 	res.send({ token: app_token });
 });
