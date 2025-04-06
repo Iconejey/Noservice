@@ -666,15 +666,21 @@ class DATE {
 // ---- AI GENERATION ----
 
 class AI {
+	static countTokens(text) {
+		// Count the number of tokens in the text
+		// 1 token = 4 characters (average)
+		return Math.ceil(text.length / 4);
+	}
+
 	// Generate text using the AI
 	static generate(opt, intermediate_callback) {
-		if (!opt.system) opt.system = '';
-		if (!opt.user) opt.user = '';
+		opt.system ||= '';
+		opt.user ||= '';
 
 		return new Promise(async (resolve, reject) => {
 			// Create a unique id for the generation
 			const id = `ai-${Date.now().toString(36)}`;
-			console.log(id, (opt.system + opt.user).length / 4);
+			console.log({ id, system: AI.countTokens(opt.system), user: AI.countTokens(opt.user) });
 
 			// The result
 			let result = '';
