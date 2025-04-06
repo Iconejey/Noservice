@@ -499,18 +499,18 @@ io.on('connection', socket => {
 	});
 
 	// Parse date NLP using chrono (both in English and French)
-	socket.on('date-nlp', (text, res) => {
-		const one_hour_offset = new Date(Date.now() + 3600000);
+	socket.on('date-nlp', (data, res) => {
+		let { date_str, timezone_offset } = data;
 
 		// "midi" is not recognized by chrono, so we replace it with "12h00"
-		const midi = text.includes('midi');
-		text = text.replace(/midi/g, '12h00');
+		const midi = date_str.includes('midi');
+		date_str = date_str.replace(/midi/g, '12h00') + ' XYZ';
 
 		// Parse in french first
-		let parsed = chrono.fr.parse(text, one_hour_offset, { forwardDate: true })[0];
+		let parsed = chrono.fr.parse(date_str, new Date(), { forwardDate: true, timezones: { XYZ: -timezone_offset } })[0];
 
 		// If no french date found, parse in english
-		if (!parsed) parsed = chrono.parse(text, one_hour_offset, { forwardDate: true })[0];
+		if (!parsed) parsed = chrono.parse(date_str, new Date(), { forwardDate: true, timezones: { XYZ: -timezone_offset } })[0];
 
 		// If no date found, null
 		if (!parsed) return res(null);
@@ -520,8 +520,8 @@ io.on('connection', socket => {
 
 		// We need the date and the text
 		res({
-			date: parsed.start.date().getTime() - 3600000,
-			text: parsed.text
+			date: parsed.start.date().getTime(),
+			text: parsed.text.replace(' XYZ', '')
 		});
 	});
 

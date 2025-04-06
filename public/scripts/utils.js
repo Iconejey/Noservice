@@ -632,8 +632,8 @@ class DATE {
 
 		const changeDays = (date, days) => new Date(new Date(date).setDate(date.getDate() + days));
 
-		if (date.toDateString() === today.toDateString()) return `Today at ${hours}:${minutes}`;
-		if (date.toDateString() === changeDays(today, -1).toDateString()) return `Yesterday at ${hours}:${minutes}`;
+		if (date.toDateString() === today.toDateString()) return `Today ${hours}:${minutes}`;
+		if (date.toDateString() === changeDays(today, -1).toDateString()) return `Yesterday ${hours}:${minutes}`;
 		if (date.toDateString() === changeDays(today, 1).toDateString()) return `Tomorrow at ${hours}:${minutes}`;
 		if (changeDays(today, -7) < date && date < changeDays(today, 7)) return `${full_day}${full ? ` at ${hours}:${minutes}` : ''}`;
 		if (year !== new Date().getFullYear()) return `${day} ${month} ${date.getDate()} ${year}${full ? ` at ${hours}:${minutes}` : ''}`;
@@ -641,11 +641,14 @@ class DATE {
 		return `${day} ${month} ${date.getDate()}${full ? ` at ${hours}:${minutes}` : ''}`;
 	}
 
-	// Parse a date from a string
+	// Parse a date from a string using NLP
 	static async parseNLP(date_str) {
 		// We use the chrono library, server side (using SOCKET)
 		return new Promise((resolve, reject) => {
-			SOCKET.emit('date-nlp', date_str, response => {
+			// Get timezone
+			const timezone_offset = new Date().getTimezoneOffset();
+
+			SOCKET.emit('date-nlp', { date_str, timezone_offset }, response => {
 				if (response?.error) return reject(response.error);
 				resolve(response);
 			});
