@@ -4,7 +4,7 @@
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=persons-content" />
 		<meta name="theme-color" content="#131313" />
-		<link rel="icon" href="https://icons.ngwy.fr/badge/nfc/none/ffffff/192/192" />
+		<link rel="icon" href="https://icons.nosuite.fr/badge/nfc/none/ffffff/192/192" />
 
 		<!-- Manifest -->
 		<link rel="manifest" href="/manifest.json" />
@@ -48,6 +48,15 @@
 					});
 
 					console.log('NFC tag written successfully.');
+
+					// // Make the NFC tag read-only
+					// try {
+					// 	await ndef.makeReadOnly();
+					// 	alert('NFC tag is now read-only.');
+					// } catch (error) {
+					// 	alert('Failed to make NFC tag read-only:', error);
+					// 	throw new Error('Could not make NFC tag read-only.');
+					// }
 				}
 
 				// Get the url from server

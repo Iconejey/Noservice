@@ -1,6 +1,6 @@
 {
-	"name": "Nosuite",
-	"short_name": "Nosuite",
+	"name": "Compte Nosuite",
+	"short_name": "Compte Nosuite",
 	"description": "Un seul compte pour toutes les applications Nosuite !",
 	"start_url": "/auth",
 	"scope": "/",
@@ -10,37 +10,37 @@
 
 	"icons": [
 		{
-			"src": "https://icons.ngwy.fr/maskable/person/f9f9f9/000000/1024/1024",
+			"src": "https://icons.nosuite.fr/maskable/person/f9f9f9/000000/1024/1024",
 			"sizes": "1024x1024",
 			"type": "image/png",
 			"purpose": "maskable"
 		},
 		{
-			"src": "https://icons.ngwy.fr/maskable/person/f9f9f9/000000/512/512",
+			"src": "https://icons.nosuite.fr/maskable/person/f9f9f9/000000/512/512",
 			"sizes": "512x512",
 			"type": "image/png",
 			"purpose": "maskable"
 		},
 		{
-			"src": "https://icons.ngwy.fr/maskable/person/f9f9f9/000000/256/256",
+			"src": "https://icons.nosuite.fr/maskable/person/f9f9f9/000000/256/256",
 			"sizes": "256x256",
 			"type": "image/png",
 			"purpose": "maskable"
 		},
 		{
-			"src": "https://icons.ngwy.fr/circle/person/f9f9f9/000000/1024/1024",
+			"src": "https://icons.nosuite.fr/circle/person/f9f9f9/000000/1024/1024",
 			"sizes": "1024x1024",
 			"type": "image/png",
 			"purpose": "any"
 		},
 		{
-			"src": "https://icons.ngwy.fr/circle/person/f9f9f9/000000/512/512",
+			"src": "https://icons.nosuite.fr/circle/person/f9f9f9/000000/512/512",
 			"sizes": "512x512",
 			"type": "image/png",
 			"purpose": "any"
 		},
 		{
-			"src": "https://icons.ngwy.fr/circle/person/f9f9f9/000000/256/256",
+			"src": "https://icons.nosuite.fr/circle/person/f9f9f9/000000/256/256",
 			"sizes": "256x256",
 			"type": "image/png",
 			"purpose": "any"

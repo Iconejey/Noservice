@@ -99,14 +99,14 @@ class AccountList extends CustomElement {
 
 		// Check if demo account is already in accounts
 		for (const span of $$('.account-email')) {
-			if (span.innerText === 'demo@nosuite.ngwy.fr') return;
+			if (span.innerText === 'demo@nosuite.fr') return;
 		}
 
 		// Sign in with demo account
 		const json = await fetchJSON('/auth', {
 			method: 'POST',
 			body: {
-				email: 'demo@nosuite.ngwy.fr',
+				email: 'demo@nosuite.fr',
 				password: 'password',
 				app: origin_app
 			}

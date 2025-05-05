@@ -203,11 +203,7 @@ async function fetchJSON(url, options) {
 		if (json?.error) console.error(json.error);
 
 		// Unothorized
-		if (location.hostname !== 'nosuite.ngwy.fr' && json.error === 'Invalid token') {
-			localStorage.removeItem('token');
-			alert('Votre session a expiré, veuillez vous reconnecter.');
-			return location.reload();
-		}
+		if (location.hostname !== 'account.nosuite.fr' && json.error === 'Invalid token') return expiredSignOut();
 
 		return json;
 	} catch (err) {
@@ -321,7 +317,7 @@ function mixColors(color1, color2, weight) {
 
 // Load color scheme
 async function loadColorScheme() {
-	scheme = await fetchJSON('https://nosuite.ngwy.fr/theme.json');
+	scheme = await fetchJSON('https://account.nosuite.fr/theme.json');
 	if (scheme.error) return alert('Erreur lors du chargement du thème : ' + scheme.error);
 
 	let light_values = '';
@@ -339,6 +335,7 @@ async function loadColorScheme() {
 		if (!name.includes('-')) {
 			light_values += `--${name}-trans: ${light}40;`;
 			light_values += `--${name}-txt: ${mixColors(light, scheme.light['txt-2'], 0.5)};`;
+			light_values += `--${name}: ${mixColors(light, scheme.light['txt-2'], 0.5)};`;
 
 			dark_values += `--${name}-trans: ${dark}30;`;
 			dark_values += `--${name}-txt: ${mixColors(dark, scheme.dark['txt-2'], 0.5)};`;
@@ -366,7 +363,7 @@ loadColorScheme();
 
 // Navigate to auth service
 function openAuthWindow() {
-	location.href = `https://nosuite.ngwy.fr/auth?app=${location.host}`;
+	location.href = `https://account.nosuite.fr/auth?app=${location.host}`;
 }
 
 // Check if user is signed in
@@ -382,7 +379,7 @@ function authFromURL() {
 	// Check if "demo" search param is present
 	if (url.searchParams.has('demo')) {
 		// Redeirect to demo auth page
-		location.href = `https://nosuite.ngwy.fr/auth?demo&app=${location.host}`;
+		location.href = `https://account.nosuite.fr/auth?demo&app=${location.host}`;
 	}
 
 	// Get the token from the URL
@@ -412,9 +409,16 @@ function signOut() {
 	location.reload();
 }
 
+// Expired sign out
+function expiredSignOut() {
+	localStorage.removeItem('token');
+	alert('Votre session a expiré, veuillez vous reconnecter.');
+	location.reload();
+}
+
 // Get account info
 function getAccountInfo(token) {
-	return fetchJSON('https://nosuite.ngwy.fr/account-info', {
+	return fetchJSON('https://account.nosuite.fr/account-info', {
 		method: 'POST',
 		body: { token: token || localStorage.getItem('token') }
 	});
@@ -422,7 +426,7 @@ function getAccountInfo(token) {
 
 // ---- SOCKET ----
 
-const SOCKET = io('https://nosuite.ngwy.fr');
+const SOCKET = io('https://account.nosuite.fr');
 const CLIENT_ID = Date.now().toString(36).slice(-2); // Just for broadcast self identification
 
 // ---- STORAGE ----
@@ -461,8 +465,13 @@ class STORAGE {
 
 			// Send commands
 			SOCKET.emit('storage', cmds, responses => {
-				// Error handling
-				if (responses.error) return reject(responses.error);
+				// Error handling on request
+				if (responses.error) {
+					if (responses.error === 'Invalid token') return expiredSignOut();
+					return reject(responses.error);
+				}
+
+				// Error handling on each command
 				const errors = responses.filter(r => r.error);
 				if (errors.length) return reject(errors[0].error);
 
@@ -494,8 +503,13 @@ class STORAGE {
 
 	// Read file content
 	static async read(path) {
-		const responses = await STORAGE.sendCmds([{ type: 'read', path }]);
-		return responses[0].content;
+		try {
+			const responses = await STORAGE.sendCmds([{ type: 'read', path }]);
+			return responses[0].content;
+		} catch (err) {
+			if (err === 'Not found') return null;
+			throw err;
+		}
 	}
 
 	// Read multiple files content

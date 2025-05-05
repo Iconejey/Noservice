@@ -5,7 +5,7 @@ const fs = require('fs');
 require('dotenv').config();
 
 class Encryption {
-	static test_accounts = ['test@gmail.com', 'demo@nosuite.ngwy.fr', 'template@nosuite.ngwy.fr'];
+	static test_accounts = ['test@gmail.com', 'demo@nosuite.fr', 'template@nosuite.fr'];
 
 	// Check if private key is set
 	get is_ready() {

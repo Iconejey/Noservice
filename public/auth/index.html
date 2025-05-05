@@ -4,7 +4,7 @@
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=persons-content" />
 		<meta name="theme-color" content="#1f1f1f" />
-		<link rel="icon" href="https://icons.ngwy.fr/badge/person/none/ffffff/192/192" />
+		<link rel="icon" href="https://icons.nosuite.fr/badge/person/none/ffffff/192/192" />
 
 		<!-- Manifest -->
 		<link rel="manifest" href="/manifest.json" />
@@ -20,8 +20,8 @@
 		<meta name="twitter:description" content="Authenticate with your Nosuite account to access all our applications." />
 
 		<!-- Image -->
-		<meta name="og:image" content="https://icons.ngwy.fr/maskable/person/f9f9f9/000000/1200/600" />
-		<meta name="twitter:image" content="https://icons.ngwy.fr/maskable/person/f9f9f9/000000/1200/600" />
+		<meta name="og:image" content="https://icons.nosuite.fr/maskable/person/f9f9f9/000000/1200/600" />
+		<meta name="twitter:image" content="https://icons.nosuite.fr/maskable/person/f9f9f9/000000/1200/600" />
 
 		<!-- Styles -->
 		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
@@ -30,6 +30,7 @@
 		<!-- Scripts -->
 		<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 		<script src="/scripts/utils.js" defer></script>
+		<script src="/scripts/auth.js" defer></script>
 		<script src="/scripts/components/account-list.js" defer></script>
 	</head>
 	<body class="dark">
@@ -41,15 +42,5 @@
 		<p id="warning" class="hidden">Les applications Nosuite sont encore en développement. Seuls les beta testers peuvent créer un compte pour l'instant.</p>
 
 		<p>Utilisez votre compte Nosuite pour vous connecter à toutes nos applications. Toutes les données de vos applications sont chiffrées et stockées dans votre compte Nosuite.</p>
-
-		<script>
-			// Get the origin app name from search params
-			const url_params = new URLSearchParams(location.search);
-			const origin_app = url_params.get('app');
-
-			onload = () => {
-				$('#origin-app').innerText = origin_app;
-			};
-		</script>
 	</body>
 </html>

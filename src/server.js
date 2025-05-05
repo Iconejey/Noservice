@@ -119,15 +119,15 @@ app.post('/auth/:app', ready, (req, res) => {
 	if (!token_data.valid) return res.send({ error: 'Invalid token' });
 
 	// Generate app token
-	const is_demo = token_data.email === 'demo@nosuite.ngwy.fr';
+	const is_demo = token_data.email === 'demo@nosuite.fr';
 	const exp = is_demo ? 1 / 24 : 7;
 	const app_token = Auth.generateToken(req.params.app, token_data.email, exp, token_data.hashed_password);
 
 	// Id it is a demo account
 	if (is_demo) {
 		// Copy the template account into the demo account
-		const demo_path = PATH.join(__dirname, '..', 'users', 'demo@nosuite.ngwy.fr');
-		const template_path = PATH.join(__dirname, '..', 'users', 'template@nosuite.ngwy.fr');
+		const demo_path = PATH.join(__dirname, '..', 'users', 'demo@nosuite.fr');
+		const template_path = PATH.join(__dirname, '..', 'users', 'template@nosuite.fr');
 
 		fs.rmSync(demo_path, { recursive: true, force: true });
 		fs.mkdirSync(demo_path, { recursive: true });
@@ -173,7 +173,7 @@ app.post('/auth', ready, (req, res) => {
 	}
 
 	// Create Nosuite token
-	const is_demo = email === 'demo@nosuite.ngwy.fr';
+	const is_demo = email === 'demo@nosuite.fr';
 	const exp = is_demo ? 1 / 24 : 90;
 	const token = Auth.generateToken(process.env.AUTH_SERVER, email, exp, hashed_password);
 
@@ -233,7 +233,7 @@ function auth(req, res, next) {
 // Process request path
 function processPath(req, prefix) {
 	// Get the path from the url
-	req.url_path = req.path.replace(prefix, '');
+	req.url_path = decodeURIComponent(req.path.replace(prefix, ''));
 	req.storage_root = PATH.join(__dirname, '..', 'users', req.auth.email, req.auth.origin);
 	req.full_path = PATH.join(req.storage_root, req.url_path);
 
@@ -250,7 +250,10 @@ app.get('/storage/*', auth, (req, res) => {
 	if (!processPath(req, '/storage')) return res.send({ error: 'Forbidden' });
 
 	// Check if file exists
-	if (!fs.existsSync(req.full_path) || !fs.statSync(req.full_path).isFile()) return res.send({ error: 'Not found' });
+	if (!fs.existsSync(req.full_path) || !fs.statSync(req.full_path).isFile()) {
+		console.log('File not found');
+		return res.send({ error: 'Not found' });
+	}
 
 	// Read encrypted file
 	res.send(encryption.readBuffer(req.full_path, req.auth.hashed_password));
@@ -311,6 +314,7 @@ function processCmd(socket, cmd, res, callback) {
 	socket.join(token_data.email);
 
 	// Set storage root and full path
+	cmd.path = decodeURIComponent(cmd.path);
 	cmd.storage_root = PATH.join(__dirname, '..', 'users', token_data.email, cmd.app);
 	cmd.full_path = PATH.join(cmd.storage_root, cmd.path);
 
