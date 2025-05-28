@@ -1,5 +1,6 @@
 const encryption = require('./encryption');
 const fs = require('fs');
+const { BrowserDetector } = require('browser-dtector');
 
 class Auth {
 	// Verify that user exists
@@ -16,9 +17,9 @@ class Auth {
 	}
 
 	// Generate token
-	static generateToken(origin, email, days_before_exp, hashed_password) {
+	static generateToken(email, scope, device, days_before_exp, hashed_password) {
 		const exp = Date.now() + days_before_exp * 86_400_000;
-		return encryption.encryptJSON({ origin, email, hashed_password, exp }, null).toString('hex');
+		return encryption.encryptJSON({ email, scope, device, hashed_password, exp }, null).toString('hex');
 	}
 
 	// Get app origin
@@ -27,27 +28,56 @@ class Auth {
 		return new URL(origin).hostname;
 	}
 
+	// Get device
+	static getDevice(req) {
+		// Determine the device type
+		const browser = new BrowserDetector();
+		const user_agent = browser.parseUserAgent(req.headers['user-agent']);
+
+		return {
+			id: req.headers.device_id,
+			is_mobile: user_agent.isMobile,
+			browser: user_agent.name,
+			platform: user_agent.platform
+		};
+	}
+
 	// Process token
-	static processToken(token, origin) {
+	static processToken(token, origin, device_id) {
 		if (!token) return { valid: false };
 
 		const data = encryption.decryptJSON(Buffer.from(token, 'hex'), null);
 		if (!data) return { valid: false };
 
-		// Check if origin is correct
-		if (data.origin !== origin) return { valid: false };
-
 		// Check if origin ends with authorized domain
-		if (!origin.endsWith(process.env.AUTHORIZED_DOMAIN)) return { valid: false };
+		if (!origin.endsWith(process.env.AUTHORIZED_DOMAIN)) {
+			console.error(`Unauthorized origin: ${origin}`);
+			return { valid: false };
+		}
 
 		// Check if token is expired
-		if (Date.now() > data.exp) return { valid: false };
+		if (Date.now() > data.exp) {
+			console.error(`Token expired: ${data.exp}`);
+			return { valid: false };
+		}
 
 		// Check if email is in database
-		if (!Auth.userExists(data.email)) return { valid: false };
+		if (!Auth.userExists(data.email)) {
+			console.error(`User does not exist: "${data.email}"`);
+			return { valid: false };
+		}
 
 		// Verify password
-		if (!Auth.verifyPassword(data.email, data.hashed_password)) return { valid: false };
+		if (!Auth.verifyPassword(data.email, data.hashed_password)) {
+			console.error(`Invalid password for user: "${data.email}"`);
+			return { valid: false };
+		}
+
+		// Verify device
+		if (data.device?.id !== device_id) {
+			console.error(`Device ID mismatch for user: "${data.email}" (token: ${data.device?.id}, user agent: ${device_id})`);
+			return { valid: false };
+		}
 
 		// Return token data
 		return { valid: true, ...data };

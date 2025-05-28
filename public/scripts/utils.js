@@ -187,10 +187,12 @@ const body_class = document.body.classList;
 async function fetchJSON(url, options) {
 	options = options || {};
 
+	// Include content type and authorization headers
 	options.headers = {
 		...options.headers,
 		'Content-Type': 'application/json',
-		Authorization: `Bearer ${localStorage.getItem('token')}`
+		Authorization: `Bearer ${localStorage.getItem('token')}`,
+		device_id: localStorage.getItem('device_id') || 'unknown-device'
 	};
 
 	options.body &&= JSON.stringify(options.body);
@@ -215,7 +217,10 @@ async function fetchJSON(url, options) {
 // Fetch blob
 async function fetchBlob(url) {
 	const options = {
-		headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+		headers: {
+			Authorization: `Bearer ${localStorage.getItem('token')}`,
+			device_id: localStorage.getItem('device_id') || 'unknown-device'
+		}
 	};
 
 	const res = await fetch(url, options);
@@ -382,18 +387,21 @@ function authFromURL() {
 		location.href = `https://account.nosuite.fr/auth?demo&app=${location.host}`;
 	}
 
-	// Get the token from the URL
+	// Get token and device ID from the URL
 	const url_token = url.searchParams.get('token');
+	const device_id = url.searchParams.get('device_id');
 
 	// Ignore if no token in URL
 	if (!url_token) return;
 
-	// Remove token from URL
+	// Remove token and device_id from URL
 	url.searchParams.delete('token');
+	url.searchParams.delete('device_id');
 	history.replaceState('app', '', url);
 
-	// Set the token in local storage
+	// Save in localStorage
 	localStorage.setItem('token', url_token);
+	localStorage.setItem('device_id', device_id || 'unknown-device');
 }
 
 // Authenticate user
@@ -459,6 +467,7 @@ class STORAGE {
 
 				// Auth
 				token: localStorage.getItem('token'),
+				device_id: localStorage.getItem('device_id') || 'unknown-device',
 				app: location.host,
 				client_id: CLIENT_ID
 			}));

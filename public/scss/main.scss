@@ -45,6 +45,12 @@ body {
 				display: none;
 			}
 		}
+
+		&#device-id {
+			font-family: 'Consola';
+			text-align: center;
+			color: var(--bg-5);
+		}
 	}
 
 	form {

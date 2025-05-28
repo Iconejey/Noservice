@@ -1,3 +1,9 @@
+// Register local TTF font for consola
+@font-face {
+	font-family: 'Consola';
+	src: url(/fonts/CONSOLA.ttf) format('truetype');
+}
+
 * {
 	margin: 0;
 	padding: 0;

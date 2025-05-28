@@ -112,16 +112,19 @@ app.post('/auth/:app', ready, (req, res) => {
 	// Get nosuite auth token
 	const { token } = req.body;
 
+	// Get device
+	const device = Auth.getDevice(req);
+
 	// Process token
-	const token_data = Auth.processToken(token, process.env.AUTH_SERVER);
+	const token_data = Auth.processToken(token, process.env.AUTH_SERVER, device.id);
 
 	// If token is invalid, error
 	if (!token_data.valid) return res.send({ error: 'Invalid token' });
 
 	// Generate app token
 	const is_demo = token_data.email === 'demo@nosuite.fr';
-	const exp = is_demo ? 1 / 24 : 7;
-	const app_token = Auth.generateToken(req.params.app, token_data.email, exp, token_data.hashed_password);
+	const exp = is_demo ? (1 / 24 / 60) * 10 : 7;
+	const app_token = Auth.generateToken(token_data.email, '', device, exp, token_data.hashed_password);
 
 	// Id it is a demo account
 	if (is_demo) {
@@ -141,15 +144,24 @@ app.post('/auth/:app', ready, (req, res) => {
 
 // Authenticate user on Nosuite
 app.post('/auth', ready, (req, res) => {
-	// Get email and password
-	const { email, password, name } = req.body;
+	// Get scope, password and account name (if sign up)
+	let { email, password, name } = req.body;
+
+	// Get device
+	const device = Auth.getDevice(req);
+
+	// Make sure this token is only usable from the auth service
+	scope = process.env.AUTH_SERVER;
 
 	// If no email or password, error
 	if (!email || !password) return res.send({ error: 'No email or password provided' });
 
-	// Verify that email is in beta access list
-	const beta = require('../users/beta-access.json');
-	if (!beta.includes(email)) return res.send({ error: 'refuse' });
+	// If no device id, error
+	if (!device.id) return res.send({ error: 'No device id provided' });
+
+	// Verify that email is in testers list
+	const testers = JSON.parse(fs.readFileSync(PATH.join(__dirname, '..', 'users', 'testers.json'), 'utf8'));
+	if (!testers.includes(email)) return res.send({ error: 'refuse' });
 
 	// Hash password
 	const hashed_password = encryption.hashPassword(password);
@@ -174,8 +186,8 @@ app.post('/auth', ready, (req, res) => {
 
 	// Create Nosuite token
 	const is_demo = email === 'demo@nosuite.fr';
-	const exp = is_demo ? 1 / 24 : 90;
-	const token = Auth.generateToken(process.env.AUTH_SERVER, email, exp, hashed_password);
+	const exp = is_demo ? (1 / 24 / 60) * 1 : 90;
+	const token = Auth.generateToken(email, scope, device, exp, hashed_password);
 
 	// Send token
 	res.send({ token });
@@ -190,18 +202,19 @@ app.post('/account-info', ready, (req, res) => {
 	if (!token) return res.send({ error: 'No token provided' });
 
 	// Process token
-	const data = Auth.processToken(token, Auth.getAppOrigin(req));
+	const data = Auth.processToken(token, Auth.getAppOrigin(req), Auth.getDevice(req).id);
 
 	// If token is invalid, error
 	if (!data.valid) return res.send({ error: 'Invalid token' });
 
-	const { email, hashed_password } = data;
+	const { email, scope, hashed_password } = data;
+	const shared = !!scope.replace(process.env.AUTH_SERVER, '');
 
 	// Get account name
 	const name = encryption.readJSON(`./users/${email}/name.enc`, hashed_password);
 
 	// Send account info
-	res.send({ email, name });
+	res.send({ email, name, shared });
 });
 
 // ---- Fetch Storage ----
@@ -213,14 +226,14 @@ function auth(req, res, next) {
 	if (!token) return res.send({ error: 'No token provided' });
 
 	// Process token
-	req.auth = Auth.processToken(token, Auth.getAppOrigin(req));
+	req.auth = Auth.processToken(token, Auth.getAppOrigin(req), Auth.getDevice(req).id);
 
 	// If token is invalid, error
 	if (!req.auth.valid) return res.send({ error: 'Invalid token' });
 
 	// Get the path from the url
 	req.url_path = req.path.replace('/storage', '');
-	req.storage_root = PATH.join(__dirname, '..', 'users', req.auth.email, req.auth.origin);
+	req.storage_root = PATH.join(__dirname, '..', 'users', req.auth.email, Auth.getAppOrigin(req));
 	req.full_path = PATH.join(req.storage_root, req.url_path);
 
 	// If full path is outside of storage root, error
@@ -234,7 +247,7 @@ function auth(req, res, next) {
 function processPath(req, prefix) {
 	// Get the path from the url
 	req.url_path = decodeURIComponent(req.path.replace(prefix, ''));
-	req.storage_root = PATH.join(__dirname, '..', 'users', req.auth.email, req.auth.origin);
+	req.storage_root = PATH.join(__dirname, '..', 'users', req.auth.email, Auth.getAppOrigin(req));
 	req.full_path = PATH.join(req.storage_root, req.url_path);
 
 	// If full path is outside of storage root, error
@@ -251,7 +264,7 @@ app.get('/storage/*', auth, (req, res) => {
 
 	// Check if file exists
 	if (!fs.existsSync(req.full_path) || !fs.statSync(req.full_path).isFile()) {
-		console.log('File not found');
+		console.error(`File not found: ${req.full_path}`);
 		return res.send({ error: 'Not found' });
 	}
 
@@ -302,7 +315,7 @@ function processCmd(socket, cmd, res, callback) {
 	if (!cmd.token) return res({ error: 'No token provided' });
 
 	// Process token
-	const token_data = Auth.processToken(cmd.token, cmd.app);
+	const token_data = Auth.processToken(cmd.token, cmd.app, cmd.device_id);
 
 	// If token is invalid, error
 	if (!token_data.valid) return res({ error: 'Invalid token' });
@@ -311,11 +324,11 @@ function processCmd(socket, cmd, res, callback) {
 	cmd.auth = token_data;
 
 	// Add socket to user room for file changes
-	socket.join(token_data.email);
+	socket.join(cmd.auth.email);
 
 	// Set storage root and full path
 	cmd.path = decodeURIComponent(cmd.path);
-	cmd.storage_root = PATH.join(__dirname, '..', 'users', token_data.email, cmd.app);
+	cmd.storage_root = PATH.join(__dirname, '..', 'users', cmd.auth.email, cmd.app);
 	cmd.full_path = PATH.join(cmd.storage_root, cmd.path);
 
 	// If full path is outside of storage root, error

@@ -61,7 +61,7 @@ class AccountList extends CustomElement {
 				if (!app_token) return alert("Erreur lors de la récupération du token d'application");
 
 				// Create auth url
-				const auth_url = `https://${origin_app}?token=${app_token}`;
+				const auth_url = `https://${origin_app}?token=${app_token}&device_id=${device_id}`;
 
 				// If the token is for the demo account, copy the url to clipboard instead of redirecting
 				if (account.email === 'demo.nosuite@gmail.com') {
@@ -211,7 +211,7 @@ class AccountList extends CustomElement {
 		// Send email and password to server
 		const json = await fetchJSON('/auth', {
 			method: 'POST',
-			body: { email, password, app: origin_app }
+			body: { email, password }
 		});
 
 		// If error, alert
@@ -262,12 +262,13 @@ class AccountList extends CustomElement {
 	}
 
 	async signUp(email) {
+		// Get account name and password
 		const { name, password } = await this.signUpForm(email);
 
 		// Send email and password to server
 		const json = await fetchJSON('/auth', {
 			method: 'POST',
-			body: { email, password, name, app: origin_app }
+			body: { email, password, name }
 		});
 
 		// If error, alert
