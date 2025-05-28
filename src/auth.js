@@ -129,6 +129,13 @@ class Auth {
 			return { valid: false };
 		}
 
+		// Check if device is registered
+		const user_device = Auth.getUserDevice(data.email, data.device.id, data.hashed_password);
+		if (!user_device) {
+			console.error(`Device not registered for user: "${data.email}" (device ID: ${data.device.id})`);
+			return { valid: false };
+		}
+
 		// Return token data
 		return { valid: true, ...data };
 	}
