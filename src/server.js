@@ -184,6 +184,9 @@ app.post('/auth', ready, (req, res) => {
 		encryption.writeJSON(`./users/${email}/name.enc`, name, hashed_password);
 	}
 
+	// Add device to user devices
+	Auth.addUserDevice(email, device, hashed_password);
+
 	// Create Nosuite token
 	const is_demo = email === 'demo@nosuite.fr';
 	const exp = is_demo ? (1 / 24 / 60) * 1 : 90;

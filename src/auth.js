@@ -28,7 +28,7 @@ class Auth {
 		return new URL(origin).hostname;
 	}
 
-	// Get device
+	// Get device from request user agent
 	static getDevice(req) {
 		// Determine the device type
 		const browser = new BrowserDetector();
@@ -40,6 +40,56 @@ class Auth {
 			browser: user_agent.name,
 			platform: user_agent.platform
 		};
+	}
+
+	// Get user device list
+	static getUserDevices(email, hashed_password) {
+		// Path to the user's devices file
+		const path = `./users/${email}/devices.enc`;
+
+		// Use empty list if the file does not exist
+		if (!fs.existsSync(path)) return [];
+
+		// Read and decrypt the devices file
+		const devices = encryption.readJSON(path, hashed_password);
+
+		// Return an empty list if the file is empty or not an array
+		return Array.isArray(devices) ? devices : [];
+	}
+
+	// Add device to user devices
+	static addUserDevice(email, device, hashed_password) {
+		// Get the user's devices
+		const devices = Auth.getUserDevices(email, hashed_password);
+
+		// Check if the device already exists
+		if (devices.some(d => d.id === device.id)) return;
+
+		// Add the new device
+		devices.push(device);
+
+		// Write the updated devices list back to the file
+		const path = `./users/${email}/devices.enc`;
+		encryption.writeJSON(path, devices, hashed_password);
+	}
+
+	// Get user device by ID
+	static getUserDevice(email, device_id, hashed_password) {
+		const devices = Auth.getUserDevices(email, hashed_password);
+		return devices.find(device => device.id === device_id) || null;
+	}
+
+	// Remove user device by ID
+	static removeUserDevice(email, device_id, hashed_password) {
+		// Get the user's devices
+		const devices = Auth.getUserDevices(email, hashed_password);
+
+		// Filter out the device to be removed
+		const updated_devices = devices.filter(device => device.id !== device_id);
+
+		// Write the updated devices list back to the file
+		const path = `./users/${email}/devices.enc`;
+		encryption.writeJSON(path, updated_devices, hashed_password);
 	}
 
 	// Process token
