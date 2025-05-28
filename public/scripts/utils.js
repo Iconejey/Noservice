@@ -600,34 +600,6 @@ class STORAGE {
 // ---- DATE AND TIME ----
 
 class DATE {
-	// Describe a date in French
-	static toFrench(date_ms, full = false) {
-		const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-		const full_days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-		const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
-
-		const today = new Date();
-
-		const date = new Date(+date_ms);
-		const day = days[date.getDay()];
-		const full_day = full_days[date.getDay()];
-		const month = months[date.getMonth()];
-		const year = date.getFullYear();
-		const hours = date.getHours().toString().padStart(2, '0');
-		const minutes = date.getMinutes().toString().padStart(2, '0');
-
-		const changeDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
-
-		if (date.toDateString() === today.toDateString()) return `Aujourd'hui à ${hours}h${minutes}`;
-		if (date.toDateString() === changeDays(today, -1).toDateString()) return `Hier à ${hours}h${minutes}`;
-		if (date.toDateString() === changeDays(today, 1).toDateString()) return `Demain à ${hours}h${minutes}`;
-		if (date > changeDays(today, -7)) return `${full_day}${full ? ` à ${hours}h${minutes}` : ''}`;
-		if (date < changeDays(today, 7)) return `${full_day}${full ? ` à ${hours}h${minutes}` : ''}`;
-		if (year !== new Date().getFullYear()) return `${day} ${date.getDate()} ${month} ${year}${full ? ` à ${hours}h${minutes}` : ''}`;
-
-		return `${day} ${date.getDate()} ${month}${full ? ` à ${hours}h${minutes}` : ''}`;
-	}
-
 	// Describe a date in English
 	static toEnglish(date_ms, full = false) {
 		const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -653,6 +625,33 @@ class DATE {
 		if (year !== new Date().getFullYear()) return `${day} ${month} ${date.getDate()} ${year}${full ? ` at ${hours}:${minutes}` : ''}`;
 
 		return `${day} ${month} ${date.getDate()}${full ? ` at ${hours}:${minutes}` : ''}`;
+	}
+
+	// Describe a date in French
+	static toFrench(date_ms, full = false) {
+		const days = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
+		const full_days = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+		const months = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+
+		const today = new Date();
+
+		const date = new Date(+date_ms);
+		const day = days[date.getDay()];
+		const full_day = full_days[date.getDay()];
+		const month = months[date.getMonth()];
+		const year = date.getFullYear();
+		const hours = date.getHours().toString().padStart(2, '0');
+		const minutes = date.getMinutes().toString().padStart(2, '0');
+
+		const changeDays = (date, days) => new Date(new Date(date).setDate(date.getDate() + days));
+
+		if (date.toDateString() === today.toDateString()) return `Aujourd'hui à ${hours}h${minutes}`;
+		if (date.toDateString() === changeDays(today, -1).toDateString()) return `Hier à ${hours}h${minutes}`;
+		if (date.toDateString() === changeDays(today, 1).toDateString()) return `Demain à ${hours}h${minutes}`;
+		if (changeDays(today, -7) < date && date < changeDays(today, 7)) return `${full_day}${full ? ` à ${hours}h${minutes}` : ''}`;
+		if (year !== new Date().getFullYear()) return `${day} ${date.getDate()} ${month} ${year}${full ? ` à ${hours}h${minutes}` : ''}`;
+
+		return `${day} ${date.getDate()} ${month}${full ? ` à ${hours}:${minutes}` : ''}`;
 	}
 
 	// Parse a date from a string using NLP
@@ -710,7 +709,7 @@ class AI {
 				// If the chunk is final
 				if (chunk.final) {
 					SOCKET.off(id);
-					console.log(result);
+					// console.log(result);
 					return resolve(result);
 				}
 

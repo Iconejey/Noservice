@@ -513,8 +513,8 @@ io.on('connection', socket => {
 		// Parse in french first
 		let parsed = chrono.fr.parse(date_str, new Date(), { forwardDate: true, timezones: { XYZ: -timezone_offset } })[0];
 
-		// If no french date found, parse in english
-		if (!parsed) parsed = chrono.parse(date_str, new Date(), { forwardDate: true, timezones: { XYZ: -timezone_offset } })[0];
+		// // If no french date found, parse in english
+		// if (!parsed) parsed = chrono.parse(date_str, new Date(), { forwardDate: true, timezones: { XYZ: -timezone_offset } })[0];
 
 		// If no date found, null
 		if (!parsed) return res(null);
