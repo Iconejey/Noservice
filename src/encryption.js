@@ -99,7 +99,7 @@ class Encryption {
 	// Write encrypted data to file
 	writeJSON(path, data, hashed_password) {
 		if (!this.isTestFile(path)) data = this.encryptJSON(data, hashed_password);
-		fs.writeFileSync(path, data);
+		fs.writeFileSync(path, JSON.stringify(data));
 	}
 
 	// Read encrypted buffer from file
@@ -116,7 +116,7 @@ class Encryption {
 		if (!fs.existsSync(path)) return null;
 
 		const data = fs.readFileSync(path);
-		if (this.isTestFile(path)) return data.toString();
+		if (this.isTestFile(path)) return JSON.parse(data.toString());
 		return this.decryptJSON(data, hashed_password);
 	}
 }
